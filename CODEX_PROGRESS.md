@@ -10,6 +10,7 @@ Last updated: 2026-07-20
 - Made mouse/keyboard the automatic controller-free fallback, with one-shot primary-pointer firing, pause/results/menu gating, resize-safe world-coordinate conversion, focus restoration, and listener cleanup across hunt transitions.
 - Added development cleanup for stale same-origin service-worker registrations and project/workbox caches.
 - Expanded Playwright coverage for Vite MIME responses, console module failures, menu safety, hunt startup, aim, exactly-once firing, pause/resume, resize, keyboard controls, and production loading.
+- Hardened hunt restarts and exits so disconnected browser providers and destroyed Phaser instances cannot be reused, and made forbidden MIME/module console messages fail the entire Playwright test lifecycle.
 
 ## Repair files and validation
 
@@ -20,6 +21,8 @@ Last updated: 2026-07-20
 - `npm run build` and `npm run check`: passed; production PWA emitted to `dist/` (only the known Phaser chunk-size warning remains).
 - Production preview: Playwright 4/4 applicable tests passed (1 development-only MIME test skipped); independent Chromium smoke check loaded the menu with no console or page errors.
 - Header verification: `/` returned `text/html`; `/src/main.ts` returned `text/javascript`, both with `Cache-Control: no-store` in development.
+- Final live-process verification replaced project-local `python -m http.server` PID 278701 with Vite PID 281671 for development testing; both project servers were stopped cleanly after validation.
+- Final validation after lifecycle hardening: `npm install`, `npm run typecheck`, `npm run lint`, `npm test` (7/7), `npm run test:e2e` (5/5 development), `npm run build`, production Playwright (4/4 with 1 expected skip), and `npm run check` all passed. The only production smoke warnings were Chromium headless WebGL readback performance messages.
 
 - Inspected the initial repository, Node/npm/Git toolchain, and GitHub authentication.
 - Confirmed a clean `main` branch with only the initial README and MIT license.
@@ -62,6 +65,6 @@ Last updated: 2026-07-20
 
 - Final Git review, commit, push, and GitHub Pages status check.
 
-## Latest commit hash
+## Latest implementation commit hash
 
-- `a9ec14c6543943bb2ec4386bc53bf9def8ff3d16` — fix: serve Vite and add reliable mouse controls
+- `6fa619ae128046f46388b480cb6c4f5c059e41a6` — fix: harden browser input lifecycle checks
