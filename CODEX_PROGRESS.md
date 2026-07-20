@@ -46,4 +46,4 @@ Last updated: 2026-07-19
 
 ## Latest commit hash
 
-- Pending release commit (parent: `70a3d70`).
+- `f09c2f1` — feat: ship Alaska Duck Hunt browser game
