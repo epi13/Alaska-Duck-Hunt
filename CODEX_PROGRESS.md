@@ -11,6 +11,7 @@ Last updated: 2026-07-20
 - Added development cleanup for stale same-origin service-worker registrations and project/workbox caches.
 - Expanded Playwright coverage for Vite MIME responses, console module failures, menu safety, hunt startup, aim, exactly-once firing, pause/resume, resize, keyboard controls, and production loading.
 - Hardened hunt restarts and exits so disconnected browser providers and destroyed Phaser instances cannot be reused, and made forbidden MIME/module console messages fail the entire Playwright test lifecycle.
+- Diagnosed a second occurrence after the same long-lived terminal relaunched `python -m http.server` as PID 284442. Stopped only that project-local process, restarted Vite on port 8000, added an explicit SVG favicon, and added browser coverage for its successful MIME response.
 
 ## Repair files and validation
 
@@ -23,6 +24,7 @@ Last updated: 2026-07-20
 - Header verification: `/` returned `text/html`; `/src/main.ts` returned `text/javascript`, both with `Cache-Control: no-store` in development.
 - Final live-process verification replaced project-local `python -m http.server` PID 278701 with Vite PID 281671 for development testing; both project servers were stopped cleanly after validation.
 - Final validation after lifecycle hardening: `npm install`, `npm run typecheck`, `npm run lint`, `npm test` (7/7), `npm run test:e2e` (5/5 development), `npm run build`, production Playwright (4/4 with 1 expected skip), and `npm run check` all passed. The only production smoke warnings were Chromium headless WebGL readback performance messages.
+- Follow-up browser validation after the server was relaunched: `/src/main.ts` returned `200 text/javascript`, `/assets/icon.svg` returned `200 image/svg+xml`, Chromium passed 5/5 tests, and `npm run check` passed. Vite was deliberately left running on port 8000 for immediate manual retesting.
 
 - Inspected the initial repository, Node/npm/Git toolchain, and GitHub authentication.
 - Confirmed a clean `main` branch with only the initial README and MIT license.
@@ -67,4 +69,4 @@ Last updated: 2026-07-20
 
 ## Latest implementation commit hash
 
-- `6fa619ae128046f46388b480cb6c4f5c059e41a6` — fix: harden browser input lifecycle checks
+- `1bac352080401b273d32b4a7a1b12c1d3905b109` — fix: add favicon and verify Vite assets
