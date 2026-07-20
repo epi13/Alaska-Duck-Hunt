@@ -64,4 +64,4 @@ Last updated: 2026-07-20
 
 ## Latest commit hash
 
-- Pending final verified implementation commit.
+- `a9ec14c6543943bb2ec4386bc53bf9def8ff3d16` — fix: serve Vite and add reliable mouse controls
