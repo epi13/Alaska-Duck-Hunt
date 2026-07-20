@@ -83,7 +83,9 @@ function briefing() {
 }
 function startHunt() {
   browserInput?.disconnect();
+  browserInput = undefined;
   game?.destroy(true);
+  game = undefined;
   root.innerHTML = `<div id="game"></div><div id="aim-layer" aria-label="Hunt aiming surface" data-shots="0"></div><div class="hud"><div><small>SCORE</small><b id="score">000000</b><span id="combo">COMBO ×0</span></div><div class="objective">PINTAIL • FIELD ROUND</div><div><small>TIME</small><b id="time">01:00</b></div></div><div class="ammo"><small>SHELLS</small><b id="ammo">●●●●●</b><span>R RELOAD</span></div><div id="notice" aria-live="polite"></div><div id="pause" class="overlay hidden"><h2>HUNT PAUSED</h2><button id="resume">RESUME</button><button id="quit">RETURN TO MENU</button></div>`;
   const scene = new HuntScene();
   game = new Phaser.Game({
@@ -176,6 +178,7 @@ function startHunt() {
     browserInput?.disconnect();
     browserInput = undefined;
     game?.destroy(true);
+    game = undefined;
     menu();
   });
 }

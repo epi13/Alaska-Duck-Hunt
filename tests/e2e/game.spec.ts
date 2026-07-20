@@ -2,17 +2,24 @@ import { expect, test, type Page } from '@playwright/test';
 
 const forbiddenConsole =
   /disallowed MIME type|text\/vnd\.trolltech\.linguist|failed to load module script|MIME type mismatch/i;
+const browserFailures = new WeakMap<Page, string[]>();
 
 test.beforeEach(async ({ page }) => {
   const failures: string[] = [];
+  browserFailures.set(page, failures);
   page.on('console', (message) => {
     if (forbiddenConsole.test(message.text())) failures.push(message.text());
   });
-  page.on('pageerror', (error) => failures.push(error.message));
+  page.on('pageerror', (error) => {
+    if (forbiddenConsole.test(error.message)) failures.push(error.message);
+  });
   await page.goto('/');
   await enterMenu(page);
   await expect(page.getByText('THE MIGRATION')).toBeVisible();
-  expect(failures.filter((message) => forbiddenConsole.test(message))).toEqual([]);
+});
+
+test.afterEach(async ({ page }) => {
+  expect(browserFailures.get(page) ?? []).toEqual([]);
 });
 
 async function enterMenu(page: Page) {
