@@ -2,18 +2,13 @@ import Phaser from 'phaser';
 import { HuntScene } from './game/HuntScene';
 import { LEGAL_DISCLAIMER, locations, modes, species, type GameMode } from './data/content';
 import { AudioManager } from './services/audio';
+import { BrowserInputProvider, type InputEvent } from './core/input';
 import './styles/main.css';
 
 const root = document.querySelector<HTMLDivElement>('#app')!;
-root.addEventListener('click', (event) => {
-  const target = event.target as HTMLElement;
-  if (target.closest('#resume')) {
-    const overlay = document.querySelector<HTMLElement>('#pause');
-    if (overlay) overlay.style.display = 'none';
-  }
-});
 const audio = new AudioManager();
 let game: Phaser.Game | undefined;
+let browserInput: BrowserInputProvider | undefined;
 let selectedMode: GameMode = 'campaign';
 const icon = (n: string) => `<span class="pixel-icon" aria-hidden="true">${n}</span>`;
 function shell(content: string) {
@@ -87,7 +82,9 @@ function briefing() {
   document.querySelector('#start-hunt')?.addEventListener('click', startHunt);
 }
 function startHunt() {
-  root.innerHTML = `<div id="game"></div><div id="aim-layer" aria-label="Hunt aiming surface"></div><div class="hud"><div><small>SCORE</small><b id="score">000000</b><span id="combo">COMBO ×0</span></div><div class="objective">PINTAIL • FIELD ROUND</div><div><small>TIME</small><b id="time">01:00</b></div></div><div class="ammo"><small>SHELLS</small><b id="ammo">●●●●●</b><span>R RELOAD</span></div><div id="notice" aria-live="polite"></div><div id="pause" class="overlay hidden"><h2>HUNT PAUSED</h2><button id="resume">RESUME</button><button id="quit">RETURN TO MENU</button></div>`;
+  browserInput?.disconnect();
+  game?.destroy(true);
+  root.innerHTML = `<div id="game"></div><div id="aim-layer" aria-label="Hunt aiming surface" data-shots="0"></div><div class="hud"><div><small>SCORE</small><b id="score">000000</b><span id="combo">COMBO ×0</span></div><div class="objective">PINTAIL • FIELD ROUND</div><div><small>TIME</small><b id="time">01:00</b></div></div><div class="ammo"><small>SHELLS</small><b id="ammo">●●●●●</b><span>R RELOAD</span></div><div id="notice" aria-live="polite"></div><div id="pause" class="overlay hidden"><h2>HUNT PAUSED</h2><button id="resume">RESUME</button><button id="quit">RETURN TO MENU</button></div>`;
   const scene = new HuntScene();
   game = new Phaser.Game({
     type: Phaser.AUTO,
@@ -100,76 +97,84 @@ function startHunt() {
     scene: [scene],
     input: { mouse: { preventDefaultWheel: true } },
   });
-  let visibleAmmo = 5;
   let huntPaused = false;
   const aimLayer = document.querySelector<HTMLElement>('#aim-layer');
-  aimLayer?.addEventListener('pointerdown', (event) => {
-    const bounds = game?.canvas.getBoundingClientRect();
-    if (!bounds) return;
-    visibleAmmo = Math.max(0, visibleAmmo - 1);
-    setText('ammo', '●'.repeat(visibleAmmo) + '○'.repeat(5 - visibleAmmo));
-    scene.fire(
-      ((event.clientX - bounds.left) / bounds.width) * scene.scale.width,
-      ((event.clientY - bounds.top) / bounds.height) * scene.scale.height,
-    );
-  });
-  const huntKeys = (event: KeyboardEvent) => {
-    if (!game) return;
-    if (event.key.toLowerCase() === 'r') {
-      visibleAmmo = 5;
-      setText('ammo', '●●●●●');
-    }
-    if (event.key === 'Escape') {
+  const handleInput = (event: InputEvent) => {
+    if (!game || event.phase === 'released') return;
+    if (event.action === 'aim') {
+      const camera = scene.cameras.main;
+      const displayX = event.x * scene.scale.gameSize.width;
+      const displayY = event.y * scene.scale.gameSize.height;
+      const world = camera.getWorldPoint(displayX, displayY);
+      scene.aim(world.x, world.y);
+    } else if (event.action === 'fire') {
+      scene.fireAtAim();
+    } else if (event.action === 'reload') {
+      scene.reloadHunt();
+    } else if (event.action === 'pause') {
       huntPaused = !huntPaused;
       document.querySelector('#pause')?.classList.toggle('hidden', !huntPaused);
       if (huntPaused) scene.pauseHunt();
       else scene.resumeHunt();
+    } else if (event.action === 'fullscreen') {
+      void scene.scale.toggleFullscreen();
     }
   };
-  window.addEventListener('keydown', huntKeys);
-  aimLayer?.addEventListener('pointermove', (event) => {
-    const bounds = game?.canvas.getBoundingClientRect();
-    if (!bounds) return;
-    scene.aim(
-      ((event.clientX - bounds.left) / bounds.width) * scene.scale.width,
-      ((event.clientY - bounds.top) / bounds.height) * scene.scale.height,
-    );
-  });
-  scene.events.on('hud', (h: { score: number; ammo: number; combo: number; time: number }) => {
-    setText('score', String(h.score).padStart(6, '0'));
-    setText('ammo', '●'.repeat(h.ammo) + '○'.repeat(5 - h.ammo));
-    setText('combo', `COMBO ×${h.combo}`);
-    setText('time', `00:${String(Math.max(0, h.time)).padStart(2, '0')}`);
-  });
-  scene.events.on('notice', (n: string) => {
-    audio.shot();
-    const el = document.querySelector('#notice');
-    if (el) {
-      el.textContent = n;
-      el.classList.add('show');
-      setTimeout(() => el.classList.remove('show'), 700);
+  const connectBrowserInput = () => {
+    if (!aimLayer || !game?.canvas || browserInput) return;
+    game.canvas.tabIndex = 0;
+    browserInput = new BrowserInputProvider(aimLayer, game.canvas);
+    browserInput.connect(handleInput);
+  };
+  const waitForCanvas = () => {
+    if (!game || browserInput) return;
+    if (game.canvas && scene.sys?.isActive()) {
+      connectBrowserInput();
+      scene.events.on(
+        'hud',
+        (h: { score: number; ammo: number; combo: number; time: number; shots?: number }) => {
+          setText('score', String(h.score).padStart(6, '0'));
+          setText('ammo', '●'.repeat(h.ammo) + '○'.repeat(5 - h.ammo));
+          setText('combo', `COMBO ×${h.combo}`);
+          setText('time', `00:${String(Math.max(0, h.time)).padStart(2, '0')}`);
+          aimLayer?.setAttribute('data-shots', String(h.shots ?? 0));
+        },
+      );
+      scene.events.on('aim', ({ x, y }: { x: number; y: number }) => {
+        aimLayer?.setAttribute('data-aim-x', x.toFixed(2));
+        aimLayer?.setAttribute('data-aim-y', y.toFixed(2));
+      });
+      scene.events.on('notice', (n: string) => {
+        audio.shot();
+        const el = document.querySelector('#notice');
+        if (el) {
+          el.textContent = n;
+          el.classList.add('show');
+          setTimeout(() => el.classList.remove('show'), 700);
+        }
+      });
+      scene.events.on('pause', (p: boolean) =>
+        document.querySelector('#pause')?.classList.toggle('hidden', !p),
+      );
+      scene.events.on(
+        'complete',
+        (r: { score: number; hits: number; shots: number; accuracy: number }) => results(r),
+      );
+    } else requestAnimationFrame(waitForCanvas);
+  };
+  waitForCanvas();
+  document.querySelector('#resume')?.addEventListener('click', () => {
+    huntPaused = false;
+    const pauseOverlay = document.querySelector<HTMLElement>('#pause');
+    if (pauseOverlay) {
+      pauseOverlay.classList.add('hidden');
     }
+    scene.resumeHunt();
+    game?.canvas.focus({ preventScroll: true });
   });
-  scene.events.on('pause', (p: boolean) =>
-    document.querySelector('#pause')?.classList.toggle('hidden', !p),
-  );
-  scene.events.on(
-    'complete',
-    (r: { score: number; hits: number; shots: number; accuracy: number }) => results(r),
-  );
-  document
-    .querySelector('#resume')
-    ?.addEventListener('click', () => {
-      huntPaused = false;
-      const pauseOverlay = document.querySelector<HTMLElement>('#pause');
-      if (pauseOverlay) {
-        pauseOverlay.classList.add('hidden');
-        pauseOverlay.style.display = 'none';
-      }
-      scene.resumeHunt();
-    });
   document.querySelector('#quit')?.addEventListener('click', () => {
-    window.removeEventListener('keydown', huntKeys);
+    browserInput?.disconnect();
+    browserInput = undefined;
     game?.destroy(true);
     menu();
   });
@@ -179,6 +184,8 @@ function setText(id: string, v: string) {
   if (el) el.textContent = v;
 }
 function results(r: { score: number; hits: number; shots: number; accuracy: number }) {
+  browserInput?.disconnect();
+  browserInput = undefined;
   game?.destroy(true);
   game = undefined;
   audio.success();
@@ -265,3 +272,22 @@ window.addEventListener('keydown', (e) => {
 });
 if (localStorage.getItem('adh-launched')) menu();
 else splash();
+
+if (import.meta.env.DEV && 'serviceWorker' in navigator) {
+  void navigator.serviceWorker
+    .getRegistrations()
+    .then((registrations) =>
+      Promise.all(registrations.map((registration) => registration.unregister())),
+    );
+  if ('caches' in window) {
+    void caches
+      .keys()
+      .then((keys) =>
+        Promise.all(
+          keys
+            .filter((key) => /workbox|precache|alaska|adh/i.test(key))
+            .map((key) => caches.delete(key)),
+        ),
+      );
+  }
+}

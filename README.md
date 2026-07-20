@@ -4,7 +4,7 @@
 
 An original retro-modern browser hunting game set across Alaska’s flyways, coasts, forests, tundra, and alpine country. Track fast procedural flights, identify targets, avoid protected lookalikes, master shifting weather, and progress north through a local-first campaign.
 
-This project is an affectionate tribute to the *format and spirit* of classic light-gun arcade games. It contains no Nintendo code, ROM data, art, audio, characters, typography, or other proprietary assets.
+This project is an affectionate tribute to the _format and spirit_ of classic light-gun arcade games. It contains no Nintendo code, ROM data, art, audio, characters, typography, or other proprietary assets.
 
 ## Release status
 
@@ -24,15 +24,15 @@ Version 1.0 is a playable static PWA. The production flow includes splash, campa
 
 ## Controls
 
-| Action | Default |
-|---|---|
-| Aim | Mouse / touch / WASD / arrow keys |
-| Fire | Left click / tap / Space |
-| Reload | R |
-| Pause | Escape |
-| Confirm / focus | Enter / Tab |
-| Fullscreen | F |
-| Mute | M |
+| Action          | Default                           |
+| --------------- | --------------------------------- |
+| Aim             | Mouse / touch / WASD / arrow keys |
+| Fire            | Left click / tap / Space          |
+| Reload          | R                                 |
+| Pause           | Escape                            |
+| Confirm / focus | Enter / Tab                       |
+| Fullscreen      | F                                 |
+| Mute            | M                                 |
 
 ## Install and run
 
@@ -43,7 +43,18 @@ npm install
 npm run dev
 ```
 
-Open the local URL shown by Vite. For a LAN test, keep `--host` enabled (already configured) and use the machine’s local IP.
+Open **http://localhost:8000**. `npm run dev` starts Vite with a strict port reservation and transforms TypeScript modules into browser-compatible JavaScript. Do not run `python -m http.server` (or another generic static server) from the source repository: it serves raw `.ts` files with the wrong MIME type. If port 8000 is occupied, identify the owner with `lsof -nP -iTCP:8000 -sTCP:LISTEN` or `ss -ltnp '( sport = :8000 )'`, stop it only if it belongs to this project, then rerun `npm run dev`.
+
+For a production build and local production preview:
+
+```bash
+npm run build
+npm run preview
+```
+
+The preview is served at **http://localhost:4173**. On generic static hosting, publish the generated `dist/` directory—never the source repository.
+
+Mouse is the dependable default while the ESP32 Zapper is in development: move over the hunt canvas to aim and left-click once to fire. Keyboard controls remain available: WASD/arrows aim, Space fires, R reloads, Escape pauses/resumes, F toggles fullscreen, and M mutes. Clicking menus, settings, pause controls, or results does not fire.
 
 ## Validation
 
@@ -58,7 +69,7 @@ npm run generate:assets
 npm run validate:assets
 ```
 
-The build output is `dist/`. Test it with `npm run preview`.
+The build output is `dist/`. Test it with `npm run preview`; generic static hosting must serve `dist/`, not raw project sources.
 
 ## PWA installation
 

@@ -38,10 +38,6 @@ export class HuntScene extends Phaser.Scene {
     this.drawHabitat(loc.palette);
     this.createReticle();
     this.input.setDefaultCursor('none');
-    this.input.on('pointermove', (p: Phaser.Input.Pointer) => this.reticle.setPosition(p.x, p.y));
-    this.input.keyboard?.on('keydown-SPACE', () => this.fire(this.reticle.x, this.reticle.y));
-    this.input.keyboard?.on('keydown-R', () => this.reload());
-    this.input.keyboard?.on('keydown-F', () => void this.scale.toggleFullscreen());
     this.cursors = this.input.keyboard?.createCursorKeys();
     if (this.input.keyboard)
       this.moveKeys = {
@@ -59,6 +55,7 @@ export class HuntScene extends Phaser.Scene {
       time: this.timeLeft,
       location: loc.name,
     });
+    this.events.emit('ready');
   }
   private drawHabitat(p: [string, string, string, string]) {
     const g = this.add.graphics();
@@ -177,8 +174,15 @@ export class HuntScene extends Phaser.Scene {
     }
     this.emitHud();
   }
+  fireAtAim() {
+    this.fire(this.reticle.x, this.reticle.y);
+  }
   aim(x: number, y: number) {
     this.reticle.setPosition(x, y);
+    this.events.emit('aim', { x, y });
+  }
+  reloadHunt() {
+    this.reload();
   }
   resumeHunt() {
     this.paused = false;
