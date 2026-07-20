@@ -44,6 +44,10 @@ test('serves transformed modules with JavaScript MIME and loads the menu', async
   expect(module.ok()).toBeTruthy();
   expect(module.headers()['content-type']).toMatch(/(?:text|application)\/javascript/);
   expect(module.headers()['content-type']).not.toContain('text/vnd.trolltech.linguist');
+  const favicon = await request.get('/assets/icon.svg');
+  expect(favicon.ok()).toBeTruthy();
+  expect(favicon.headers()['content-type']).toContain('image/svg+xml');
+  await expect(page.locator('link[rel="icon"]')).toHaveAttribute('href', './assets/icon.svg');
   await expect(page.getByRole('button', { name: /continue campaign/i })).toBeVisible();
 });
 
