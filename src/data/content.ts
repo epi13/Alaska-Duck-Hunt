@@ -1,0 +1,40 @@
+export type GameMode = 'campaign'|'classic'|'endless'|'species'|'identification'|'time'|'practice'|'daily'|'custom';
+export interface Location { id:string; name:string; region:string; palette:[string,string,string,string]; habitat:string; hazards:string[]; ambience:string }
+const locationRows: [string,string,string,[string,string,string,string],string,string,string][] = [
+  ['matsu','Mat-Su Valley Wetlands','Southcentral',['#7598aa','#d6b46a','#294f45','#102934'],'marsh ponds','fog,reeds','frogs and light wind'],
+  ['cook','Cook Inlet Coastal Marsh','Southcentral',['#6d879b','#d18b56','#384b43','#152532'],'tidal marsh','tide,glare','surf and gulls'],
+  ['copper','Copper River Delta','Southcentral',['#7098b4','#e7bd68','#244b41','#0a1c29'],'braided delta','rain,wind','river and rain'],
+  ['yk','Yukon–Kuskokwim Delta','Western',['#87a69a','#d4a75c','#3d5942','#182936'],'tundra delta','fog,low cloud','open wind'],
+  ['interior','Interior Boreal Forest','Interior',['#66869c','#c79b50','#274331','#111f27'],'spruce and river slough','trees,smoke haze','spruce wind'],
+  ['arctic','Arctic Coastal Plain','Arctic',['#9eb9c3','#e4d8a3','#596b60','#263844'],'coastal tundra','snow,sun glare','tundra wind'],
+  ['aleutian','Aleutian Shoreline','Southwest',['#697a89','#c18558','#30433b','#14232b'],'rocky marine coast','squalls,cliffs','surf and storm'],
+  ['southeast','Southeast Rainforest Estuary','Southeast',['#55798a','#d5a25e','#1d4439','#0b2229'],'temperate rainforest estuary','rain,branches','heavy rain'],
+  ['tundra','Tundra Lake Country','Western',['#88a7b0','#d5b879','#536143','#23333a'],'open tundra lakes','fog,mirage','water and wind'],
+  ['alpine','Alpine Ptarmigan Country','Statewide alpine',['#a9bdc8','#e6cf9c','#566053','#253039'],'rocky alpine slope','snow,rock','ridge wind'],
+  ['willow','Snow-Covered Willow Country','Interior',['#b5c9d3','#f0ddba','#677667','#283640'],'snowy willow scrub','snow,willows','soft snow wind'],
+  ['river','River Flats During Migration','Statewide',['#718fa0','#d39b5c','#354d3e','#12252e'],'river floodplain','mist,branches','flowing river'],
+];
+export const locations: Location[] = locationRows.map(([id,name,region,palette,habitat,hazards,ambience])=>({id,name,region,palette,habitat,hazards:hazards.split(','),ambience}));
+
+export const modes: {id:GameMode;name:string;description:string}[] = [
+  {id:'campaign',name:'Campaign',description:'Journey through twelve Alaskan habitats.'},{id:'classic',name:'Classic Hunt',description:'Fast arcade rounds with a hit quota.'},{id:'endless',name:'Endless Migration',description:'Survive escalating waves.'},{id:'species',name:'Species Challenge',description:'Engage only the named species.'},{id:'identification',name:'Identification Challenge',description:'Identify before firing.'},{id:'time',name:'Time Trial',description:'Score before the clock runs out.'},{id:'practice',name:'Practice Range',description:'Tune species, weather, speed and assists.'},{id:'daily',name:'Daily Seed',description:'One deterministic challenge each day.'},{id:'custom',name:'Custom Hunt',description:'Build a hunt from detailed settings.'}
+];
+
+export interface Species { id:string; common:string; scientific:string; category:string; target:boolean; traits:string; habitat:string; flight:string; distribution:string; similar:string[]; lookalikes:string[]; status:string; source:string }
+export const species: Species[] = [
+  ['mallard','Mallard','Anas platyrhynchos','dabbling duck',true,'Broad bill; blue speculum bordered in white. Drakes have green heads; hens mottled brown.','Wetlands, rivers, estuaries','Strong direct flight, mixed flocks','Most of Alaska',['Northern Pintail'],['Hawaiian Duck outside Alaska'],'Migratory game bird; rules change annually.'],
+  ['pintail','Northern Pintail','Anas acuta','dabbling duck',true,'Long neck and pointed tail; drake chocolate head, hen warm mottled brown.','Shallow wetlands and tundra ponds','Fast, graceful, high circling','Statewide migrant and breeder',['Mallard'],['Long-tailed Duck at distance'],'Migratory game bird; identification matters.'],
+  ['wigeon','American Wigeon','Mareca americana','dabbling duck',true,'Compact duck; drake white crown and green eye stripe, hen gray-brown.','Marshes and sheltered bays','Agile flock flight','Widespread migrant',['Eurasian Wigeon'],['Protected or restricted local species'],'Migratory game bird.'],
+  ['teal','Green-winged Teal','Anas crecca','dabbling duck',true,'Tiny duck; green speculum, drake chestnut head with green patch.','Shallow ponds and sloughs','Very fast twisting flocks','Widespread',['Blue-winged Teal'],['Small shorebirds'],'Migratory game bird.'],
+  ['scaup','Greater Scaup','Aythya marila','diving duck',true,'Rounded head; broad white wing stripe; drake pale gray back.','Coasts and large lakes','Low fast flock flight','Coastal and statewide migrant',['Lesser Scaup'],['Tufted Duck'],'Migratory game bird; scaup rules may differ.'],
+  ['eider','Common Eider','Somateria mollissima','sea duck',true,'Large heavy sea duck; wedge bill, drake black and white.','Marine coasts','Powerful low lines over water','Coastal Alaska',['King Eider'],['Spectacled Eider','Steller’s Eider'],'Some eiders are protected; expert identification essential.'],
+  ['harlequin','Harlequin Duck','Histrionicus histrionicus','sea duck',true,'Small compact sea duck; drake slate blue with white facial marks.','Rocky coasts and fast streams','Low rapid flight','Coasts and mountain streams',['Long-tailed Duck'],['Steller’s Eider'],'Game bird in some contexts; local restrictions may apply.'],
+  ['goose','Greater White-fronted Goose','Anser albifrons','goose',true,'Orange legs, white forehead, dark belly bars in adults.','Tundra wetlands and fields','Strong V formations','Western and northern Alaska',['Cackling Goose'],['Emperor Goose in poor light'],'Migratory game bird; regional rules vary.'],
+  ['brant','Brant','Branta bernicla','goose',true,'Small dark goose with short bill and white neck patch.','Coastal lagoons','Low coastal formations','Arctic and western coasts',['Cackling Goose'],['Aleutian Cackling Goose populations'],'Migratory game bird; location rules vary.'],
+  ['crane','Sandhill Crane','Antigone canadensis','crane',true,'Very large gray bird, long legs trailing, red crown in adults.','Wet tundra and flats','Slow deep wingbeats, soaring','Breeds widely',['Herons'],['Whooping Crane'],'Game bird under specific rules; never confuse with protected cranes.'],
+  ['grouse','Spruce Grouse','Canachites canadensis','upland',true,'Chunky forest grouse; dark male with red eye comb.','Boreal spruce forest','Explosive short flush','Interior and Southcentral',['Ruffed Grouse'],['Dusky Grouse where rules differ'],'Resident small game; state rules vary.'],
+  ['ptarmigan','Willow Ptarmigan','Lagopus lagopus','upland',true,'State bird; white wings, seasonal brown or white body, black tail.','Willow tundra','Low explosive burst','Statewide',['Rock Ptarmigan'],['White-tailed Ptarmigan'],'Resident small game; rules vary by unit.'],
+  ['spectacled','Spectacled Eider','Somateria fischeri','protected lookalike',false,'Large pale eye patches form spectacles; heavy sea-duck profile.','Arctic coastal waters','Low strong marine flight','Western and northern coasts',['Common Eider'],[],'Protected: never a game target in this game.'],
+].map(([id,common,scientific,category,target,traits,habitat,flight,distribution,similar,lookalikes,status])=>({id,common,scientific,category,target,traits,habitat,flight,distribution,similar,lookalikes,status,source:'ADF&G and USFWS; see docs/regulatory-sources.md'} as Species));
+
+export const LEGAL_DISCLAIMER='This game is education and entertainment—not legal hunting advice. Real regulations change by year, region, species, emergency order, land manager, residency, permit, and method. Always consult current ADF&G and federal regulations before hunting.';
