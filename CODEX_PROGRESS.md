@@ -4,6 +4,12 @@ Last updated: 2026-07-20
 
 ## Completed work
 
+- Preserved the user-supplied 69-photo, 10-species reference collection by moving it from disposable `dist/assets` to `assets/references`, retaining its category and license manifests.
+- Generated ten original 4×4 pixel-art flight sheets with four animation frames across four documented sex, morph, age, or seasonal variants; retained keyed generation sources and produced validated 512×512 transparent gameplay PNGs.
+- Added a data-driven bird sprite manifest, deterministic illustrated-species and variant selection, correct directional flipping, per-species display/hitbox tuning, animated Phaser flight, and animated field-guide previews.
+- Added Common Goldeneye, Canada Goose, and Snow Goose field-guide records after verifying broad game-bird context against official 2026 USFWS and current ADF&G sources on 2026-07-20; the in-game legal disclaimer and no-fixed-limits policy remain in force.
+- Added sprite manifest/unit coverage, PNG dimension validation, live illustrated-spawn and field-guide browser assertions, all-page-error failure handling, and a fix for the optional Phaser physics teardown error found during visual QA.
+- Configured Workbox to precache all ten bird sheets and the existing concept art; production now precaches 19 entries (about 5 MB), so installed offline play retains the new artwork.
 - Fixed the localhost MIME failure: a project-local `python -m http.server` process was serving raw `src/main.ts`, which Linux labeled `text/vnd.trolltech.linguist`.
 - Configured Vite development at `http://localhost:8000` with host enabled, strict port ownership, and no-cache development responses. The correct command is `npm run dev`; transformed `src/main.ts` is now `text/javascript`.
 - Added a lifecycle-safe `BrowserInputProvider` that emits normalized absolute aim, trigger down/up, reload, pause, and fullscreen actions through the existing abstract input contract.
@@ -25,6 +31,7 @@ Last updated: 2026-07-20
 - Final live-process verification replaced project-local `python -m http.server` PID 278701 with Vite PID 281671 for development testing; both project servers were stopped cleanly after validation.
 - Final validation after lifecycle hardening: `npm install`, `npm run typecheck`, `npm run lint`, `npm test` (7/7), `npm run test:e2e` (5/5 development), `npm run build`, production Playwright (4/4 with 1 expected skip), and `npm run check` all passed. The only production smoke warnings were Chromium headless WebGL readback performance messages.
 - Follow-up browser validation after the server was relaunched: `/src/main.ts` returned `200 text/javascript`, `/assets/icon.svg` returned `200 image/svg+xml`, Chromium passed 5/5 tests, and `npm run check` passed. Vite was deliberately left running on port 8000 for immediate manual retesting.
+- Bird-sprite validation: `npm run validate:assets` passed for all ten 512×512 sheets; Vitest passed 8/8; development Playwright passed 5/5; production Playwright passed 4/4 applicable tests with one expected development-only skip; `npm run check` and the production PWA build passed. Seeded Chromium visual QA rendered four animated birds plus ten guide cards with zero page errors or failed requests.
 
 - Inspected the initial repository, Node/npm/Git toolchain, and GitHub authentication.
 - Confirmed a clean `main` branch with only the initial README and MIT license.
@@ -69,4 +76,4 @@ Last updated: 2026-07-20
 
 ## Latest implementation commit hash
 
-- `1bac352080401b273d32b4a7a1b12c1d3905b109` — fix: add favicon and verify Vite assets
+- `aac61c51739ffea76ecaae47f2ab1e5ef594094a` — feat: add animated Alaska bird sprites
