@@ -30,3 +30,6 @@ Birds, projectiles, feathers, and weather particles are pooled. Broad-phase coll
 
 Gameplay consumes semantic actions (`aim`, `fire`, `reload`, `pause`, `confirm`) from providers. Keyboard/mouse, touch, gamepad, simulated Zapper, BLE, and Web Serial adapters normalize into the same timestamped event stream. Transport code never calls scene methods directly.
 
+## Bird behavior boundary
+
+`src/core/birds` contains pure transition, disturbance, flock-plan, and flight-vector functions. Species profiles, habitat affinities, scoring, and sprite manifests remain immutable data under `src/data`. `BirdEntity`, `BirdSpawnSystem`, and `DogFlushSystem` are presentation adapters: they translate deterministic plans into Phaser animation, depth, input hitboxes, and telemetry. The runtime throws on a missing species atlas and never substitutes generic geometry.

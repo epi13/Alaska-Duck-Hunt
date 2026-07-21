@@ -4,6 +4,15 @@ Last updated: 2026-07-20
 
 ## Completed work
 
+- Replaced the flight-only bird runtime with a deterministic surface → dog disturbance → alert/reveal → takeoff → species flight → landing/escape state system. Pure planning, transition, targetability, and vectors live in `src/core/birds`; habitat, behavior, scoring, and atlas definitions stay in `src/data`; Phaser adapters live in `src/game/entities` and `src/game/systems`.
+- Archived the ten superseded 512×512 flight sheets under `assets/references/current-implemented-bird-sheets` with their original layout contract, manifest, repository provenance, and SHA-256 checksums before runtime replacement.
+- Built complete original behavior atlases for all 16 roster species, including the protected Spectacled Eider. Every species has two explicit variants, 32 named frames, a production atlas/JSON pair, and a deliberate four-frame Field Guide preview; crane uses larger logical frames for its conceal/reveal/upright/run sequence.
+- Added family-specific starts and motion: dabblers spring from shallow water, divers and sea ducks dive and water-run, geese graze/sentry/run in formations, grouse and ptarmigan make short landing-prone flushes, and crane has a readable upright 2× bonus window before takeoff.
+- Added state-specific display origins, scales, depth, occlusion, and ellipse hitboxes; protected Spectacled Eider is fully illustrated, visibly flushes, never awards points, and carries a 1,500-point penalty.
+- Added `npm run pack:birds` and expanded asset validation to all 16 atlas dimensions, 32-frame named metadata, required states, preview strips, scene plates, dog sheet, and habitat atlases. Chroma sources and processed alpha sheets remain separate from production outputs.
+- Added deterministic behavior tests for seeded flocks, habitat filtering, dabbler/diver differences, upland landing/return, crane reveal, targetability, crane scoring, and protected penalties. Browser telemetry now records surface, initial/current state, dog flush, target state/position, and confirms no generic fallback.
+- Added `docs/bird-animation-system.md` and `docs/species-behavior.md`, refreshed architecture/art/pipeline/README documentation, recorded natural-history sources, and verified official conservation/regulatory links on 2026-07-20 with the in-game disclaimer intact.
+
 - Preserved the user-supplied 12-location Alaska scene reference pack under `assets/references`, including all 36 photos, the area-menu reference, README, and source/license CSV.
 - Generated twelve original, reference-informed 16-bit Alaska gameplay plates with distinct regional landforms, vegetation, water, weather, and seasonal palettes; retained full-resolution source outputs and emitted 1280×720 production PNGs.
 - Generated and keyed an original 16-frame Alaska field-retriever sheet (run, search, bound, retrieve/celebrate) plus three eight-frame wetland, forest/alpine, and arctic/winter habitat prop atlases.
@@ -25,6 +34,11 @@ Last updated: 2026-07-20
 - Diagnosed a second occurrence after the same long-lived terminal relaunched `python -m http.server` as PID 284442. Stopped only that project-local process, restarted Vite on port 8000, added an explicit SVG favicon, and added browser coverage for its successful MIME response.
 
 ## Repair files and validation
+
+- Bird-behavior phase validation: `npm run validate:assets` passed for 16 atlases/JSON maps/previews, 12 scene plates, the retriever, and three habitat atlases. `npm run check` passed with 18/18 Vitest assertions; development Playwright passed 7/7, including an explicit seeded crane reveal-to-flight ordering check; production Playwright passed 6/6 applicable flows with the development-only MIME check skipped.
+- Browser plugin was not available, so repository Playwright was used as required by the frontend testing skill. Desktop QA at 1440×900 showed water/ground flocks, dog-triggered crane and goose flush telemetry, state-aware target coordinates, and airborne wing cycles. Mobile QA at 390×844 showed 16 illustrated guide cards with no horizontal overflow. No application console/page errors occurred; the only messages were headless Chromium WebGL readback performance warnings during screenshots.
+- Accepted concept/final fidelity ledger: both retain the Copper River braided-water middle depth, distant snowy mountains, broad sky flight lane, dense foreground reeds/logs, dog search corridor, water birds, and upright crane reveal. The final intentionally adds the playable HUD/reticle, packs more birds into deterministic flocks, and uses the existing three-layer scene plate rather than baking birds or dog into the background.
+- Production Workbox precaches 73 entries (about 25.97 MB), including all 16 atlases, metadata, previews, and location art. The known non-failing Phaser chunk-size warning remains.
 
 - Scene-art phase files: `src/data/scene-art.ts`, `src/data/scene-art.test.ts`, `src/game/HuntScene.ts`, `src/main.ts`, `scripts/validate-assets.ts`, `tests/e2e/game.spec.ts`, `assets/generated/`, `assets/references/Alaska_Duck_Hunt_Reference_Pack/`, `public/assets/{scenes,characters,habitat}/`, `docs/art-pipeline.md`, `README.md`, and this progress log.
 - `npm run validate:assets`: passed for 10 bird sheets, 12 scene plates, one dog sheet, and three habitat atlases.
@@ -71,13 +85,13 @@ Last updated: 2026-07-20
 
 ## Tests that pass
 
-- Vitest: 10 tests passing across 3 files.
-- Playwright: Chromium startup/navigation/settings and gameplay/manifest/responsive flows configured; targeted browser automation and production screenshots completed.
+- Vitest: 18 tests passing across 4 files.
+- Playwright: 7/7 Chromium development flows and 6/6 applicable production-preview flows (one expected development-only MIME test skipped).
 
 ## Known issues
 
 - Phaser remains a large browser bundle (about 343 kB gzip); Vite reports a non-failing chunk-size warning.
-- The field-guide gameplay database is a curated launch subset; regulatory documentation lists the broader annual verification policy.
+- The 16-species gameplay roster is complete; natural-history simplifications and all score/timing values remain fictional game tuning.
 - Physical ESP32 Zapper hardware remains under development; BLE/Serial transports are still future adapters. Mouse, keyboard, touch-pointer, gamepad architecture, and the simulated-controller pathway remain available.
 
 ## Next steps

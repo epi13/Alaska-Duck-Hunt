@@ -60,6 +60,7 @@ test('serves transformed modules with JavaScript MIME and loads the menu', async
 test('menu controls never fire a gameplay shot', async ({ page }) => {
   await page.getByRole('button', { name: 'Settings' }).first().click();
   await page.getByLabel('Reduced motion').click();
+  await expect(page.locator('#app')).toHaveClass(/reduce-motion/);
   await expect(page.locator('#aim-layer')).toHaveCount(0);
 });
 
@@ -73,9 +74,13 @@ test('mouse aims and fires exactly once, pause gates fire, and resume restores i
     .toBeGreaterThan(0);
   await expect(surface).toHaveAttribute(
     'data-last-illustrated-bird',
-    /ptarmigan|grouse|mallard|pintail|goldeneye|harlequin|canada-goose|snow-goose|brant|crane/,
+    /mallard|pintail|wigeon|teal|scaup|eider|harlequin|goldeneye|goose|canada-goose|snow-goose|brant|crane|grouse|ptarmigan|spectacled/,
   );
-  await expect(surface).toHaveAttribute('data-bird-lane', /near|far/);
+  await expect(surface).toHaveAttribute('data-bird-lane', 'ground');
+  await expect(surface).toHaveAttribute('data-bird-surface', /water|ground|grass|shore|mud|river|branch|coast/i);
+  await expect.poll(async () => surface.getAttribute('data-dog-flush'), { timeout: 20_000 }).not.toBeNull();
+  await expect(surface).toHaveAttribute('data-bird-state', /alert|standingBonus|preTakeoff|takeoff|flying|climbing|descending/);
+  await expect.poll(async () => surface.getAttribute('data-bird-state-history'), { timeout: 8_000 }).toMatch(/takeoff.*flying/);
   const bounds = await surface.boundingBox();
   expect(bounds).not.toBeNull();
   await page.mouse.move(bounds!.x + bounds!.width * 0.7, bounds!.y + bounds!.height * 0.35);
@@ -113,14 +118,40 @@ test('mouse aim stays aligned after viewport resize and keyboard remains availab
   await expect(page.locator('#ammo')).toHaveText('●●●●●');
 });
 
+test('state-aware target hit uses an illustrated atlas bird', async ({ page }) => {
+  await startHunt(page);
+  const surface = page.locator('#aim-layer');
+  await expect.poll(async () => surface.getAttribute('data-target-x')).not.toBeNull();
+  const bounds = await surface.boundingBox();
+  const x = Number(await surface.getAttribute('data-target-x'));
+  const y = Number(await surface.getAttribute('data-target-y'));
+  const state = await surface.getAttribute('data-target-state');
+  expect(state).toMatch(/resting|foraging|walking|swimming|diving|alert|standingBonus|preTakeoff|takeoff|flying/);
+  await page.mouse.click(bounds!.x + x, bounds!.y + y);
+  await expect(surface).toHaveAttribute('data-shots', '1');
+  await expect(page.locator('#notice')).not.toHaveText('MISS');
+});
+
+test('seeded crane visibly reveals before its bonus window and flight', async ({ page }) => {
+  await page.goto('/?seed=final-qa');
+  await enterMenu(page);
+  await startHunt(page);
+  const surface = page.locator('#aim-layer');
+  await expect.poll(async () => surface.getAttribute('data-dog-flush'), { timeout: 20_000 }).toBe('crane');
+  await expect.poll(async () => surface.getAttribute('data-bird-state-history'), { timeout: 10_000 }).toMatch(/crane:revealing.*crane:standingBonus.*crane:preTakeoff.*crane:takeoff.*crane:flying/);
+});
+
 test('field guide, manifest, and responsive mobile layout', async ({ page }) => {
   await page.locator('[data-go="guide"]').first().click();
   await expect(page.getByRole('heading', { name: 'FIELD GUIDE' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Spectacled Eider' })).toBeVisible();
-  await expect(page.locator('.guide-bird.has-sprite')).toHaveCount(10);
-  const sheet = await page.request.get('/assets/birds/mallard.png');
+  await expect(page.locator('.guide-bird.has-sprite')).toHaveCount(16);
+  const sheet = await page.request.get('/assets/birds/mallard/atlas.png');
   expect(sheet.ok()).toBeTruthy();
   expect(sheet.headers()['content-type']).toContain('image/png');
+  const atlas = await page.request.get('/assets/birds/spectacled/atlas.json');
+  expect(atlas.ok()).toBeTruthy();
+  expect(Object.keys((await atlas.json()).frames)).toHaveLength(32);
   for (const asset of [
     '/assets/scenes/copper.png',
     '/assets/characters/retriever.png',

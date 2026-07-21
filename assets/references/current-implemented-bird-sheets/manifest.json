@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "repositoryCommit": "5b509a4a2cd9b048d7f0752b430621479a0d10ad",
+  "sourceDirectory": "public/assets/birds",
+  "frameWidth": 128,
+  "frameHeight": 128,
+  "columns": ["wing-up", "wing-neutral", "wing-down", "wing-neutral-2"],
+  "sheets": [
+    {
+      "speciesId": "ptarmigan",
+      "file": "sheets/ptarmigan.png",
+      "variants": ["male summer", "female summer", "male winter", "female winter"]
+    },
+    {
+      "speciesId": "grouse",
+      "file": "sheets/grouse.png",
+      "variants": ["male", "female", "male cold-season", "female cold-season"]
+    },
+    {
+      "speciesId": "mallard",
+      "file": "sheets/mallard.png",
+      "variants": ["breeding drake", "hen", "eclipse drake", "winter hen"]
+    },
+    {
+      "speciesId": "pintail",
+      "file": "sheets/pintail.png",
+      "variants": ["breeding drake", "hen", "summer drake", "winter drake"]
+    },
+    {
+      "speciesId": "goldeneye",
+      "file": "sheets/goldeneye.png",
+      "variants": ["breeding drake", "female", "summer male", "winter female"]
+    },
+    {
+      "speciesId": "harlequin",
+      "file": "sheets/harlequin.png",
+      "variants": ["breeding drake", "female", "summer female", "winter drake"]
+    },
+    {
+      "speciesId": "canada-goose",
+      "file": "sheets/canada-goose.png",
+      "variants": ["large adult", "smaller adult", "warm-season adult", "cold-season adult"]
+    },
+    {
+      "speciesId": "snow-goose",
+      "file": "sheets/snow-goose.png",
+      "variants": ["white morph", "blue morph", "smaller white morph", "juvenile"]
+    },
+    {
+      "speciesId": "brant",
+      "file": "sheets/brant.png",
+      "variants": ["dark adult", "smaller adult", "warm-season adult", "cold-season adult"]
+    },
+    {
+      "speciesId": "crane",
+      "file": "sheets/crane.png",
+      "variants": ["gray adult", "rust-stained adult", "smaller adult", "winter-gray adult"]
+    }
+  ]
+}

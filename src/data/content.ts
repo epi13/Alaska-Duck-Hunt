@@ -395,7 +395,7 @@ export const species: Species[] = [
       lookalikes,
       status,
       source: 'ADF&G and USFWS; see docs/regulatory-sources.md',
-      lastVerified: '2026-07-19',
+      lastVerified: '2026-07-20',
     }) as Species,
 );
 

@@ -1,6 +1,6 @@
 # ALASKA DUCK HUNT
 
-![Alaska Duck Hunt gameplay concept](docs/images/gameplay-concept.png)
+![Alaska Duck Hunt bird behavior concept](docs/images/bird-behavior-concept.png)
 
 An original retro-modern browser hunting game set across Alaska’s flyways, coasts, forests, tundra, and alpine country. Track fast procedural flights, identify targets, avoid protected lookalikes, master shifting weather, and progress north through a local-first campaign.
 
@@ -13,7 +13,7 @@ Version 1.0 is a playable static PWA. The production flow includes splash, campa
 ## Features
 
 - Crisp original pixel-art direction with layered Alaska scenery, animated flight and feathers, weather-ready palettes, HUD impact feedback, and optional accessibility effects.
-- Ten reference-informed animated bird sprite sheets with four flight frames across four documented sex, morph, age, or seasonal variants, used in live hunts and the field guide.
+- Sixteen reference-informed species atlases with two explicit plumage variants, named ground/water/alert/takeoff/flight/landing/hit frames, state-aware hitboxes, dog-triggered flush behavior, and animated Field Guide previews.
 - Twelve original reference-informed 16-bit Alaska location plates, three habitat prop atlases, and a 16-frame original field-retriever sheet with far-flight, near-flight, ground-cover, and foreground depth lanes.
 - Campaign spanning 12 named Alaska habitats, plus Classic Hunt, Endless Migration, Species Challenge, Identification Challenge, Time Trial, Practice Range, Daily Seed, and Custom Hunt.
 - Seeded reproducible rounds with species roles, wind, weather, visibility, formations, flock size, speed, altitude, ammunition, and varied flight behaviors.
@@ -68,6 +68,7 @@ npm run build
 npm run test:e2e
 npm run check
 npm run generate:assets
+npm run pack:birds
 npm run validate:assets
 ```
 
@@ -80,6 +81,8 @@ Serve the production build over HTTPS (localhost is also allowed by browsers), o
 ## Architecture
 
 Phaser renders the responsive pixel-perfect playfield. Accessible DOM screens and overlays handle menus and settings. Pure strict-TypeScript modules under `src/core` own RNG, round plans, scoring, input translation, and save migration; they do not depend on Phaser. Data lives in `src/data`, Web Audio and persistence live behind services, and Vite emits a static offline-capable application. See [architecture](docs/architecture.md), [procedural generation](docs/procedural-levels.md), and [input system](docs/input-system.md).
+
+Bird behavior begins on habitat surfaces rather than off-screen flight lanes. See [bird animation system](docs/bird-animation-system.md) and [species behavior profiles](docs/species-behavior.md).
 
 ## Original media pipeline
 

@@ -553,19 +553,22 @@ footer {
   margin: 0 auto;
   background-repeat: no-repeat;
   background-position: 0 0;
-  background-size: 400% 400%;
+  background-size: 400% 100%;
   image-rendering: pixelated;
-  animation: guide-flap 700ms steps(3) infinite;
+  animation: guide-flap 900ms steps(4) infinite;
 }
 @keyframes guide-flap {
   to {
-    background-position-x: 100%;
+    background-position-x: 133.333%;
   }
 }
 @media (prefers-reduced-motion: reduce) {
   .guide-bird.has-sprite {
     animation: none;
   }
+}
+.reduce-motion .guide-bird.has-sprite {
+  animation: none;
 }
 .guide-bird.protected {
   color: var(--coral);

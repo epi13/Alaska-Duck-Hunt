@@ -1,4 +1,5 @@
 {
   "compilerOptions": { "composite": true, "target": "ES2022", "module": "ESNext", "moduleResolution": "Bundler", "types": ["node"], "strict": true, "skipLibCheck": true, "noEmit": true },
-  "include": ["vite.config.ts", "playwright.config.ts", "scripts"]
+  "include": ["vite.config.ts", "playwright.config.ts", "scripts", "src/core/**/*.ts", "src/data/**/*.ts"],
+  "exclude": ["src/**/*.test.ts"]
 }

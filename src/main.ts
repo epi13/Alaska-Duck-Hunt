@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { HuntScene } from './game/HuntScene';
 import { LEGAL_DISCLAIMER, locations, modes, species, type GameMode } from './data/content';
 import { birdSpriteBySpecies } from './data/bird-sprites';
+import { birdBehaviorBySpecies } from './data/bird-behaviors';
 import { AudioManager } from './services/audio';
 import { BrowserInputProvider, type InputEvent } from './core/input';
 import './styles/main.css';
@@ -14,6 +15,7 @@ let selectedMode: GameMode = 'campaign';
 const icon = (n: string) => `<span class="pixel-icon" aria-hidden="true">${n}</span>`;
 function shell(content: string) {
   root.innerHTML = `<div class="app-shell"><header><button class="brand" data-go="menu"><img src="assets/icon.svg" alt=""><span>ALASKA <b>DUCK HUNT</b></span></button><div class="header-actions"><button data-go="guide">FIELD GUIDE</button><button data-go="settings">SETTINGS</button></div></header><main>${content}</main><footer><span>ORIGINAL ALASKAN ARCADE HUNT</span><span>OFFLINE READY • v1.0</span></footer></div>`;
+  root.classList.toggle('reduce-motion', localStorage.getItem('adh-Reduced motion') === 'true');
   bindNav();
 }
 function bindNav() {
@@ -170,6 +172,37 @@ function startHunt() {
         },
       );
       scene.events.on(
+        'bird-state',
+        ({ speciesId, from, to, surface }: { speciesId: string; from: string | null; to: string; surface: string }) => {
+          aimLayer?.setAttribute('data-bird-state', to);
+          aimLayer?.setAttribute('data-bird-state-species', speciesId);
+          aimLayer?.setAttribute('data-bird-surface', surface);
+          if (from) aimLayer?.setAttribute('data-bird-state-from', from);
+          if (aimLayer) {
+            const history = `${aimLayer.dataset.birdStateHistory ?? ''}>${speciesId}:${to}`;
+            aimLayer.dataset.birdStateHistory = history.slice(-1_500);
+          }
+        },
+      );
+      scene.events.on(
+        'dog-flush',
+        ({ speciesId }: { speciesId: string }) => {
+          aimLayer?.setAttribute('data-dog-flush', speciesId);
+          aimLayer?.setAttribute('data-dog-layer', 'front');
+          window.setTimeout(() => aimLayer?.setAttribute('data-dog-layer', 'ground'), 560);
+        },
+      );
+      scene.events.on(
+        'bird-target',
+        ({ speciesId, state, x, y, protected: protectedBird }: { speciesId: string; state: string; x: number; y: number; protected: boolean }) => {
+          aimLayer?.setAttribute('data-target-species', speciesId);
+          aimLayer?.setAttribute('data-target-state', state);
+          aimLayer?.setAttribute('data-target-x', x.toFixed(2));
+          aimLayer?.setAttribute('data-target-y', y.toFixed(2));
+          aimLayer?.setAttribute('data-target-protected', String(protectedBird));
+        },
+      );
+      scene.events.on(
         'scene-art-ready',
         ({
           locationId,
@@ -242,14 +275,18 @@ function results(r: { score: number; hits: number; shots: number; accuracy: numb
 }
 function guide() {
   shell(
-    `<section class="page"><div class="section-title"><p>IDENTIFY BEFORE YOU ACT</p><h1>FIELD GUIDE</h1></div><p class="disclaimer">${LEGAL_DISCLAIMER}</p><div class="guide-grid">${species.map((s) => `<article>${fieldGuideBird(s.id, s.common, s.target)}<p>${s.category.toUpperCase()}</p><h2>${s.common}</h2><i>${s.scientific}</i><p>${s.traits}</p><details><summary>FIELD NOTES</summary><p><b>Habitat:</b> ${s.habitat}<br><b>Flight:</b> ${s.flight}<br><b>Range:</b> ${s.distribution}<br><b>Status:</b> ${s.status}<br><b>Similar:</b> ${s.similar.join(', ') || 'None listed'}<br><b>Protected lookalikes:</b> ${s.lookalikes.join(', ') || 'Consult current guide'}<br><b>Source:</b> ${s.source}<br><b>Verified:</b> ${s.lastVerified ?? '2026-07-19'}</p></details></article>`).join('')}</div></section>`,
+    `<section class="page"><div class="section-title"><p>IDENTIFY BEFORE YOU ACT</p><h1>FIELD GUIDE</h1></div><p class="disclaimer">${LEGAL_DISCLAIMER}</p><div class="guide-grid">${species.map((s) => {
+      const behavior = birdBehaviorBySpecies.get(s.id);
+      if (!behavior) throw new Error(`Missing behavior notes for ${s.id}.`);
+      const notes = behavior.fieldNotes;
+      return `<article>${fieldGuideBird(s.id, s.common, s.target)}<p>${s.category.toUpperCase()}</p><h2>${s.common}</h2><i>${s.scientific}</i><p>${s.traits}</p><details><summary>FIELD NOTES</summary><p><b>Starts:</b> ${notes.start}<br><b>Feeds:</b> ${notes.feeding}<br><b>Flush:</b> ${notes.flush}<br><b>Flight:</b> ${notes.flight}<br><b>Grouping:</b> ${notes.grouping}<br><b>Special:</b> ${notes.special}<br><b>Range:</b> ${s.distribution}<br><b>Status:</b> ${s.status}<br><b>Similar:</b> ${s.similar.join(', ') || 'None listed'}<br><b>Protected lookalikes:</b> ${s.lookalikes.join(', ') || 'Consult current guide'}<br><b>Source:</b> ${s.source}<br><b>Verified:</b> ${s.lastVerified ?? '2026-07-20'}</p></details></article>`;
+    }).join('')}</div></section>`,
   );
 }
 function fieldGuideBird(id: string, common: string, target: boolean) {
   const art = birdSpriteBySpecies.get(id);
-  if (!art)
-    return `<div class="guide-bird ${target ? '' : 'protected'}" role="img" aria-label="${common} silhouette">⌁</div>`;
-  return `<div class="guide-bird has-sprite" role="img" aria-label="Animated ${common} pixel art" style="background-image:url('${art.path}')"></div>`;
+  if (!art) throw new Error(`Missing bird atlas manifest for ${id}.`);
+  return `<div class="guide-bird has-sprite ${target ? '' : 'protected'}" role="img" aria-label="Animated ${common} behavior preview" style="background-image:url('${art.previewPath}')"></div>`;
 }
 function settings() {
   shell(
@@ -262,8 +299,10 @@ function settings() {
       if (i.type === 'checkbox') i.checked = saved === 'true';
       else i.value = saved;
     }
-    i.onchange = () =>
+    i.onchange = () => {
       localStorage.setItem(key, i.type === 'checkbox' ? String(i.checked) : i.value);
+      if (i.dataset.setting === 'Reduced motion') root.classList.toggle('reduce-motion', i.checked);
+    };
   });
   document.querySelector('#export')?.addEventListener('click', () => {
     const blob = new Blob([JSON.stringify({ ...localStorage }, null, 2)], {

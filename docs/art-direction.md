@@ -8,3 +8,4 @@ Weather and lighting use palette ramps, dithered fog, sparse particles, reflecti
 
 All generated and hand-authored game assets are original project work and distributed under the asset terms stated in the repository license. Source prompts, palettes, and generator inputs must not request imitation of proprietary game assets.
 
+Bird motion is staged across the same environment depth as the retriever: concealed/ground/water birds sit behind selected reeds or logs, the dog can temporarily move in front while flushing, launched birds enter a near flight lane, and distant/returning birds scale into the far lane. Species identity remains more important than feather micro-detail. The accepted behavior concept is `docs/images/bird-behavior-concept.png`; the final scene deliberately adds the playable HUD and reticle while preserving its dog corridor, water activity, crane reveal, open sky, and braided-delta depth.
