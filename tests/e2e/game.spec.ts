@@ -118,6 +118,20 @@ test('mouse aim stays aligned after viewport resize and keyboard remains availab
   await expect(page.locator('#ammo')).toHaveText('●●●●●');
 });
 
+test('touch pointer aims and fires exactly once', async ({ page }) => {
+  await startHunt(page);
+  const surface = page.locator('#aim-layer');
+  const bounds = await surface.boundingBox();
+  const clientX = bounds!.x + bounds!.width * 0.55;
+  const clientY = bounds!.y + bounds!.height * 0.45;
+  await surface.evaluate((element, point) => {
+    element.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, pointerType: 'touch', pointerId: 9, isPrimary: true, button: 0, clientX: point.clientX, clientY: point.clientY }));
+    element.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, cancelable: true, pointerType: 'touch', pointerId: 9, isPrimary: true, button: 0, clientX: point.clientX, clientY: point.clientY }));
+  }, { clientX, clientY });
+  await expect(surface).toHaveAttribute('data-shots', '1');
+  await expect(surface).toHaveAttribute('data-aim-x', /\d/);
+});
+
 test('state-aware target hit uses an illustrated atlas bird', async ({ page }) => {
   await startHunt(page);
   const surface = page.locator('#aim-layer');

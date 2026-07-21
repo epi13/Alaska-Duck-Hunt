@@ -35,7 +35,7 @@ Last updated: 2026-07-20
 
 ## Repair files and validation
 
-- Bird-behavior phase validation: `npm run validate:assets` passed for 16 atlases/JSON maps/previews, 12 scene plates, the retriever, and three habitat atlases. `npm run check` passed with 18/18 Vitest assertions; development Playwright passed 7/7, including an explicit seeded crane reveal-to-flight ordering check; production Playwright passed 6/6 applicable flows with the development-only MIME check skipped.
+- Bird-behavior phase validation: `npm run validate:assets` passed for 16 atlases/JSON maps/previews, 12 scene plates, the retriever, and three habitat atlases. `npm run check` passed with 18/18 Vitest assertions; development Playwright passed 8/8, including explicit touch input and seeded crane reveal-to-flight ordering checks; production Playwright passed 7/7 applicable flows with the development-only MIME check skipped.
 - Browser plugin was not available, so repository Playwright was used as required by the frontend testing skill. Desktop QA at 1440×900 showed water/ground flocks, dog-triggered crane and goose flush telemetry, state-aware target coordinates, and airborne wing cycles. Mobile QA at 390×844 showed 16 illustrated guide cards with no horizontal overflow. No application console/page errors occurred; the only messages were headless Chromium WebGL readback performance warnings during screenshots.
 - Accepted concept/final fidelity ledger: both retain the Copper River braided-water middle depth, distant snowy mountains, broad sky flight lane, dense foreground reeds/logs, dog search corridor, water birds, and upright crane reveal. The final intentionally adds the playable HUD/reticle, packs more birds into deterministic flocks, and uses the existing three-layer scene plate rather than baking birds or dog into the background.
 - Production Workbox precaches 73 entries (about 25.97 MB), including all 16 atlases, metadata, previews, and location art. The known non-failing Phaser chunk-size warning remains.
@@ -86,7 +86,7 @@ Last updated: 2026-07-20
 ## Tests that pass
 
 - Vitest: 18 tests passing across 4 files.
-- Playwright: 7/7 Chromium development flows and 6/6 applicable production-preview flows (one expected development-only MIME test skipped).
+- Playwright: 8/8 Chromium development flows and 7/7 applicable production-preview flows (one expected development-only MIME test skipped).
 
 ## Known issues
 
