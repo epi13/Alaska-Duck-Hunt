@@ -86,4 +86,4 @@ Last updated: 2026-07-20
 
 ## Latest implementation commit hash
 
-- `aac61c51739ffea76ecaae47f2ab1e5ef594094a` — feat: add animated Alaska bird sprites
+- `649ce6ad18e095d32719b38262dbf85d7bf4b062` — feat: add layered Alaska location art
