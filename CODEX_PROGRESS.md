@@ -100,4 +100,4 @@ Last updated: 2026-07-20
 
 ## Latest implementation commit hash
 
-- `649ce6ad18e095d32719b38262dbf85d7bf4b062` — feat: add layered Alaska location art
+- `c7fba70673341b4cf568c37f7b43e30dc6465fd4` — feat: add species-aware bird behavior atlases
