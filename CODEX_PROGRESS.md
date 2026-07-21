@@ -4,6 +4,11 @@ Last updated: 2026-07-20
 
 ## Completed work
 
+- Preserved the user-supplied 12-location Alaska scene reference pack under `assets/references`, including all 36 photos, the area-menu reference, README, and source/license CSV.
+- Generated twelve original, reference-informed 16-bit Alaska gameplay plates with distinct regional landforms, vegetation, water, weather, and seasonal palettes; retained full-resolution source outputs and emitted 1280×720 production PNGs.
+- Generated and keyed an original 16-frame Alaska field-retriever sheet (run, search, bound, retrieve/celebrate) plus three eight-frame wetland, forest/alpine, and arctic/winter habitat prop atlases.
+- Added a data-driven scene-art manifest covering every location, normalized mid/foreground prop placements, responsive cover scaling, a far/near bird depth split, a dog ground route, and periodic dog movement above the foreground plane.
+- Added scene-manifest unit coverage, background/dog/habitat dimension validation, live browser telemetry for location/background/layer state, asset-request assertions, and desktop/mobile visual QA.
 - Preserved the user-supplied 69-photo, 10-species reference collection by moving it from disposable `dist/assets` to `assets/references`, retaining its category and license manifests.
 - Generated ten original 4×4 pixel-art flight sheets with four animation frames across four documented sex, morph, age, or seasonal variants; retained keyed generation sources and produced validated 512×512 transparent gameplay PNGs.
 - Added a data-driven bird sprite manifest, deterministic illustrated-species and variant selection, correct directional flipping, per-species display/hitbox tuning, animated Phaser flight, and animated field-guide previews.
@@ -21,6 +26,11 @@ Last updated: 2026-07-20
 
 ## Repair files and validation
 
+- Scene-art phase files: `src/data/scene-art.ts`, `src/data/scene-art.test.ts`, `src/game/HuntScene.ts`, `src/main.ts`, `scripts/validate-assets.ts`, `tests/e2e/game.spec.ts`, `assets/generated/`, `assets/references/Alaska_Duck_Hunt_Reference_Pack/`, `public/assets/{scenes,characters,habitat}/`, `docs/art-pipeline.md`, `README.md`, and this progress log.
+- `npm run validate:assets`: passed for 10 bird sheets, 12 scene plates, one dog sheet, and three habitat atlases.
+- Scene-art validation: `npm run typecheck` and `npm run lint` passed; Vitest passed 10/10 across three files; development Playwright passed 5/5; `npm run check` and the production PWA build passed; production Playwright passed 4/4 applicable tests with one expected development-only MIME test skipped.
+- Browser visual QA: Chromium at 1440×900 and 390×844 loaded the Copper River hunt with the correct plate, three declared scene layers, animated dog, four illustrated birds, near/far flight telemetry, and no console or page errors. The original concept/final fidelity ledger retained the open sky lane, distant snowy mountain band, braided-water middle depth, foreground dog corridor, and irregular cover silhouettes while intentionally omitting HUD and characters from the opaque art plate.
+- Production Workbox precaches 35 entries (about 21 MB), including all scene plates and animation atlases. The only build note remains Vite's non-failing large Phaser chunk warning.
 - Files changed: `vite.config.ts`, `playwright.config.ts`, `src/vite-env.d.ts`, `src/core/input.ts`, `src/game/HuntScene.ts`, `src/main.ts`, `tests/e2e/game.spec.ts`, `README.md`, and this progress log.
 - `npm install`: passed; 474 packages audited, 0 vulnerabilities.
 - `npm run typecheck`, `npm run lint`, `npm test`: passed; Vitest 7/7.
@@ -46,7 +56,7 @@ Last updated: 2026-07-20
 ## Current architecture
 
 - Phaser provides the responsive playfield; accessible DOM overlays provide menus/settings. Pure strict TypeScript modules under `src/core` own deterministic domain logic.
-- Original visual direction: crisp 16-bit-inspired Alaska landscapes, navy/glacial-blue/spruce/lichen/safety-amber palette, clipped-corner HUD panels, layered parallax and restrained weather effects.
+- Original visual direction: crisp 16-bit-inspired Alaska landscapes, navy/glacial-blue/spruce/lichen/safety-amber palette, clipped-corner HUD panels, and three playable depth planes. Opaque location plates, transparent habitat occluders, and character sheets are mapped in `src/data/scene-art.ts`; Phaser remains the presentation adapter.
 
 ## Commands that work
 
@@ -61,7 +71,7 @@ Last updated: 2026-07-20
 
 ## Tests that pass
 
-- Vitest: 7 tests passing in 1 file.
+- Vitest: 10 tests passing across 3 files.
 - Playwright: Chromium startup/navigation/settings and gameplay/manifest/responsive flows configured; targeted browser automation and production screenshots completed.
 
 ## Known issues

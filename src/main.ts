@@ -87,8 +87,10 @@ function startHunt() {
   browserInput = undefined;
   game?.destroy(true);
   game = undefined;
-  root.innerHTML = `<div id="game"></div><div id="aim-layer" aria-label="Hunt aiming surface" data-shots="0" data-sprite-birds="0"></div><div class="hud"><div><small>SCORE</small><b id="score">000000</b><span id="combo">COMBO ×0</span></div><div class="objective">PINTAIL • FIELD ROUND</div><div><small>TIME</small><b id="time">01:00</b></div></div><div class="ammo"><small>SHELLS</small><b id="ammo">●●●●●</b><span>R RELOAD</span></div><div id="notice" aria-live="polite"></div><div id="pause" class="overlay hidden"><h2>HUNT PAUSED</h2><button id="resume">RESUME</button><button id="quit">RETURN TO MENU</button></div>`;
-  const scene = new HuntScene();
+  const locationIndex = Number(sessionStorage.getItem('location') ?? 2);
+  const selectedLocation = locations[locationIndex] ?? locations[2]!;
+  root.innerHTML = `<div id="game"></div><div id="aim-layer" aria-label="Hunt aiming surface" data-shots="0" data-sprite-birds="0" data-scene-layers="3" data-dog-layer="ground" data-location-id="${selectedLocation.id}" data-scene-background="assets/scenes/${selectedLocation.id}.png"></div><div class="hud"><div><small>SCORE</small><b id="score">000000</b><span id="combo">COMBO ×0</span></div><div class="objective">PINTAIL • FIELD ROUND</div><div><small>TIME</small><b id="time">01:00</b></div></div><div class="ammo"><small>SHELLS</small><b id="ammo">●●●●●</b><span>R RELOAD</span></div><div id="notice" aria-live="polite"></div><div id="pause" class="overlay hidden"><h2>HUNT PAUSED</h2><button id="resume">RESUME</button><button id="quit">RETURN TO MENU</button></div>`;
+  const scene = new HuntScene(locationIndex);
   game = new Phaser.Game({
     type: Phaser.AUTO,
     parent: 'game',
@@ -149,14 +151,42 @@ function startHunt() {
       });
       scene.events.on(
         'bird-spawned',
-        ({ speciesId, illustrated }: { speciesId: string; illustrated: boolean }) => {
+        ({
+          speciesId,
+          illustrated,
+          lane,
+        }: {
+          speciesId: string;
+          illustrated: boolean;
+          lane: string;
+        }) => {
           aimLayer?.setAttribute('data-last-bird', speciesId);
+          aimLayer?.setAttribute('data-bird-lane', lane);
           if (illustrated && aimLayer) {
             const count = Number(aimLayer.dataset.spriteBirds ?? 0) + 1;
             aimLayer.dataset.spriteBirds = String(count);
             aimLayer.dataset.lastIllustratedBird = speciesId;
           }
         },
+      );
+      scene.events.on(
+        'scene-art-ready',
+        ({
+          locationId,
+          background,
+          layers,
+        }: {
+          locationId: string;
+          background: string;
+          layers: number;
+        }) => {
+          aimLayer?.setAttribute('data-location-id', locationId);
+          aimLayer?.setAttribute('data-scene-background', background);
+          aimLayer?.setAttribute('data-scene-layers', String(layers));
+        },
+      );
+      scene.events.on('dog-layer', (layer: string) =>
+        aimLayer?.setAttribute('data-dog-layer', layer),
       );
       scene.events.on('notice', (n: string) => {
         audio.shot();

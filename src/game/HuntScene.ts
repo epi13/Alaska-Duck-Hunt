@@ -1,6 +1,14 @@
 import Phaser from 'phaser';
 import { locations, species } from '../data/content';
 import { birdSprites, birdSpriteBySpecies } from '../data/bird-sprites';
+import {
+  habitatAtlasPaths,
+  retrieverSheet,
+  sceneArt,
+  sceneArtByLocation,
+  type HabitatProp,
+  type SceneArt,
+} from '../data/scene-art';
 import { SeededRandom } from '../core/rng';
 
 type BirdObject = Phaser.GameObjects.Container | Phaser.GameObjects.Sprite;
@@ -27,13 +35,30 @@ export class HuntScene extends Phaser.Scene {
   private rng = new SeededRandom('default');
   private cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
   private moveKeys?: Record<'up' | 'down' | 'left' | 'right', Phaser.Input.Keyboard.Key>;
-  constructor() {
+  private background?: Phaser.GameObjects.Image;
+  private habitatProps: { sprite: Phaser.GameObjects.Sprite; spec: HabitatProp }[] = [];
+  private retriever?: Phaser.GameObjects.Sprite;
+  private activeSceneArt?: SceneArt;
+  private locationName = '';
+  private readonly requestedLocation: number;
+  constructor(location = 2) {
     super('hunt');
+    this.requestedLocation = location;
   }
   preload() {
     for (const sprite of birdSprites) {
       this.load.spritesheet(sprite.textureKey, sprite.path, { frameWidth: 128, frameHeight: 128 });
     }
+    const requestedId = locations[this.requestedLocation]?.id ?? locations[2]!.id;
+    const requestedArt = sceneArtByLocation.get(requestedId) ?? sceneArt[2];
+    if (requestedArt) this.load.image(`scene-${requestedArt.locationId}`, requestedArt.background);
+    for (const [key, path] of Object.entries(habitatAtlasPaths)) {
+      this.load.spritesheet(`habitat-${key}`, path, { frameWidth: 256, frameHeight: 256 });
+    }
+    this.load.spritesheet(retrieverSheet.key, retrieverSheet.path, {
+      frameWidth: retrieverSheet.frameWidth,
+      frameHeight: retrieverSheet.frameHeight,
+    });
   }
   create(data: { seed?: string; location?: number } = {}) {
     this.rng = new SeededRandom(
@@ -41,9 +66,11 @@ export class HuntScene extends Phaser.Scene {
         new URLSearchParams(location.search).get('seed') ??
         new Date().toISOString().slice(0, 10),
     );
-    const loc = locations[data.location ?? 2] ?? locations[2]!;
+    const loc = locations[data.location ?? this.requestedLocation] ?? locations[2]!;
+    this.locationName = loc.name;
     this.cameras.main.setBackgroundColor(loc.palette[3]);
-    this.drawHabitat(loc.palette);
+    this.createHabitat(loc.id);
+    this.createRetriever();
     this.createReticle();
     this.input.setDefaultCursor('none');
     this.cursors = this.input.keyboard?.createCursorKeys();
@@ -63,35 +90,117 @@ export class HuntScene extends Phaser.Scene {
       time: this.timeLeft,
       location: loc.name,
     });
+    this.events.emit('scene-art-ready', {
+      locationId: loc.id,
+      background: this.activeSceneArt?.background,
+      layers: 3,
+    });
+    const resize = () => this.layoutHabitat();
+    this.scale.on(Phaser.Scale.Events.RESIZE, resize);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () =>
+      this.scale.off(Phaser.Scale.Events.RESIZE, resize),
+    );
     this.events.emit('ready');
   }
-  private drawHabitat(p: [string, string, string, string]) {
-    const g = this.add.graphics();
-    const w = this.scale.width,
-      h = this.scale.height;
-    g.fillGradientStyle(
-      Phaser.Display.Color.HexStringToColor(p[0]).color,
-      Phaser.Display.Color.HexStringToColor(p[0]).color,
-      Phaser.Display.Color.HexStringToColor(p[1]).color,
-      Phaser.Display.Color.HexStringToColor(p[1]).color,
-    ).fillRect(0, 0, w, h);
-    g.fillStyle(0xdde8ec, 0.8);
-    for (let x = -80; x < w + 160; x += 160) {
-      const peak = h * 0.47 + Math.sin(x) * 20;
-      g.fillTriangle(x, peak + 160, x + 100, peak, x + 220, peak + 160);
+  private createHabitat(locationId: string) {
+    this.activeSceneArt = sceneArtByLocation.get(locationId) ?? sceneArt[2];
+    if (!this.activeSceneArt) return;
+    this.background = this.add.image(0, 0, `scene-${this.activeSceneArt.locationId}`).setDepth(0);
+    const texture = `habitat-${this.activeSceneArt.habitatAtlas}`;
+    for (const spec of this.activeSceneArt.midground) {
+      this.habitatProps.push({
+        sprite: this.add.sprite(0, 0, texture, spec.frame).setOrigin(0.5, 1).setDepth(35),
+        spec,
+      });
     }
-    g.fillStyle(Phaser.Display.Color.HexStringToColor(p[2]).color).fillRect(
-      0,
-      h * 0.66,
-      w,
-      h * 0.34,
-    );
-    g.fillStyle(0x416b78, 0.8).fillRect(0, h * 0.7, w, h * 0.16);
-    for (let i = 0; i < 90; i++) {
-      const x = (i * 83) % w,
-        y = h - ((i * 47) % Math.floor(h * 0.26));
-      g.lineStyle(2, i % 3 ? 0x9a793f : 0x41583b, 0.9).lineBetween(x, h, x + Math.sin(i) * 20, y);
+    for (const spec of this.activeSceneArt.foreground) {
+      this.habitatProps.push({
+        sprite: this.add.sprite(0, 0, texture, spec.frame).setOrigin(0.5, 1).setDepth(70),
+        spec,
+      });
     }
+    this.layoutHabitat();
+  }
+  private layoutHabitat() {
+    const { width, height } = this.scale;
+    if (this.background) {
+      const coverScale = Math.max(width / 1280, height / 720);
+      this.background.setPosition(width / 2, height / 2).setScale(coverScale);
+    }
+    const responsiveScale = Phaser.Math.Clamp(height / 720, 0.65, 1.4);
+    for (const { sprite, spec } of this.habitatProps) {
+      sprite
+        .setPosition(spec.x * width, spec.y * height)
+        .setScale(spec.scale * responsiveScale)
+        .setFlipX(Boolean(spec.flip));
+    }
+    if (this.retriever) {
+      this.retriever.y = height * 0.94;
+      this.retriever.setScale(Phaser.Math.Clamp(height / 720, 0.72, 1.35));
+    }
+  }
+  private createRetriever() {
+    const animations = [
+      ['retriever-run', 0, 3, 10],
+      ['retriever-search', 4, 7, 7],
+      ['retriever-bound', 8, 11, 9],
+      ['retriever-retrieve', 12, 15, 6],
+    ] as const;
+    for (const [key, start, end, frameRate] of animations) {
+      if (!this.anims.exists(key)) {
+        this.anims.create({
+          key,
+          frames: this.anims.generateFrameNumbers(retrieverSheet.key, { start, end }),
+          frameRate,
+          repeat: -1,
+        });
+      }
+    }
+    this.retriever = this.add
+      .sprite(-90, this.scale.height * 0.94, retrieverSheet.key, 4)
+      .setOrigin(0.5, 1)
+      .setDepth(58)
+      .play('retriever-search');
+    this.layoutHabitat();
+    this.startRetrieverPatrol();
+    this.time.addEvent({
+      delay: 7200,
+      loop: true,
+      callback: () => this.retrieverBound(),
+    });
+  }
+  private startRetrieverPatrol() {
+    if (!this.retriever) return;
+    this.retriever
+      .setPosition(-90, this.scale.height * 0.94)
+      .setDepth(58)
+      .play('retriever-search');
+    this.events.emit('dog-layer', 'ground');
+    this.tweens.add({
+      targets: this.retriever,
+      x: this.scale.width + 90,
+      duration: 10500,
+      delay: 500,
+      ease: 'Linear',
+      onComplete: () => this.startRetrieverPatrol(),
+    });
+  }
+  private retrieverBound() {
+    if (!this.retriever || !this.retriever.active) return;
+    const groundY = this.scale.height * 0.94;
+    this.retriever.setDepth(76).play('retriever-bound');
+    this.events.emit('dog-layer', 'front');
+    this.tweens.add({
+      targets: this.retriever,
+      y: groundY - Math.max(26, this.scale.height * 0.055),
+      duration: 320,
+      yoyo: true,
+      ease: 'Sine.easeOut',
+      onComplete: () => {
+        this.retriever?.setDepth(58).play('retriever-run');
+        this.events.emit('dog-layer', 'ground');
+      },
+    });
   }
   private createReticle() {
     const g = this.add.graphics().lineStyle(3, 0xf4e8cf, 1);
@@ -163,10 +272,13 @@ export class HuntScene extends Phaser.Scene {
     bird.birdId = entry.id;
     bird.valid = valid;
     bird.born = this.time.now;
+    const flightLane = this.rng.next() > 0.42 ? 'near' : 'far';
+    bird.setDepth(flightLane === 'near' ? 50 : 25);
     this.birds.push(bird);
     this.events.emit('bird-spawned', {
       speciesId: entry.id,
       illustrated: Boolean(spriteDefinition),
+      lane: flightLane,
     });
   }
   fire(x: number, y: number) {
@@ -258,7 +370,7 @@ export class HuntScene extends Phaser.Scene {
       shots: this.shots,
       combo: this.combo,
       time: Math.ceil(this.timeLeft),
-      location: '',
+      location: this.locationName,
     });
   }
   update(_t: number, delta: number) {

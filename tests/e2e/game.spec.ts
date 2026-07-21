@@ -32,6 +32,13 @@ async function startHunt(page: Page) {
   await expect(page.locator('canvas')).toBeVisible();
   await expect(page.locator('#aim-layer')).toHaveAttribute('data-shots', '0');
   await expect(page.locator('#aim-layer')).toHaveAttribute('data-sprite-birds', '0');
+  await expect(page.locator('#aim-layer')).toHaveAttribute('data-location-id', 'copper');
+  await expect(page.locator('#aim-layer')).toHaveAttribute(
+    'data-scene-background',
+    'assets/scenes/copper.png',
+  );
+  await expect(page.locator('#aim-layer')).toHaveAttribute('data-scene-layers', '3');
+  await expect(page.locator('#aim-layer')).toHaveAttribute('data-dog-layer', 'ground');
 }
 
 test('serves transformed modules with JavaScript MIME and loads the menu', async ({
@@ -68,6 +75,7 @@ test('mouse aims and fires exactly once, pause gates fire, and resume restores i
     'data-last-illustrated-bird',
     /ptarmigan|grouse|mallard|pintail|goldeneye|harlequin|canada-goose|snow-goose|brant|crane/,
   );
+  await expect(surface).toHaveAttribute('data-bird-lane', /near|far/);
   const bounds = await surface.boundingBox();
   expect(bounds).not.toBeNull();
   await page.mouse.move(bounds!.x + bounds!.width * 0.7, bounds!.y + bounds!.height * 0.35);
@@ -113,6 +121,15 @@ test('field guide, manifest, and responsive mobile layout', async ({ page }) => 
   const sheet = await page.request.get('/assets/birds/mallard.png');
   expect(sheet.ok()).toBeTruthy();
   expect(sheet.headers()['content-type']).toContain('image/png');
+  for (const asset of [
+    '/assets/scenes/copper.png',
+    '/assets/characters/retriever.png',
+    '/assets/habitat/wetland.png',
+  ]) {
+    const response = await page.request.get(asset);
+    expect(response.ok()).toBeTruthy();
+    expect(response.headers()['content-type']).toContain('image/png');
+  }
   const manifest = await page.request.get('/manifest.webmanifest');
   expect(manifest.ok()).toBeTruthy();
   await page.setViewportSize({ width: 390, height: 844 });
