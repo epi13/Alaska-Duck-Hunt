@@ -1,0 +1,71 @@
+﻿bird,category,output_file,source_id,classification_note
+Willow Ptarmigan,sitting,01_Willow_Ptarmigan/sitting.jpg,W1,Female on nest; sitting category.
+Willow Ptarmigan,standing,01_Willow_Ptarmigan/standing.jpg,W5,Standing adult in white winter plumage.
+Willow Ptarmigan,flying,01_Willow_Ptarmigan/flying.jpg,W2,True in-flight photograph.
+Willow Ptarmigan,male,01_Willow_Ptarmigan/male.jpg,W3,Source identifies the bird as male.
+Willow Ptarmigan,female,01_Willow_Ptarmigan/female.jpg,W1,Source identifies the nesting bird as female.
+Willow Ptarmigan,summer_plumage,01_Willow_Ptarmigan/summer_plumage.jpg,W4,Brown summer plumage.
+Willow Ptarmigan,winter_plumage,01_Willow_Ptarmigan/winter_plumage.jpg,W5,White winter plumage.
+Spruce Grouse,sitting,02_Spruce_Grouse/sitting.jpg,S3,Perched/resting in a spruce tree.
+Spruce Grouse,standing,02_Spruce_Grouse/standing.jpg,S2,Male walking/standing on a forest path.
+Spruce Grouse,flying,02_Spruce_Grouse/flying_NOT_FOUND.txt,,"No clearly reusable, correctly identified true-flight photograph was located; see note file."
+Spruce Grouse,male,02_Spruce_Grouse/male.jpg,S4,"Adult male, recognizable by dark throat/chest and red eyebrow comb."
+Spruce Grouse,female,02_Spruce_Grouse/female.jpg,S1,Source identifies the bird as female.
+Spruce Grouse,summer_plumage,02_Spruce_Grouse/summer_plumage.jpg,S4,Warm-season representative; Spruce Grouse does not undergo a ptarmigan-like full seasonal color change.
+Spruce Grouse,winter_plumage,02_Spruce_Grouse/winter_plumage.jpg,S1,"Cold-season representative; seasonal differences are subtle, not a separate white winter plumage."
+Mallard,sitting,03_Mallard/sitting.jpg,M1,Resting male.
+Mallard,standing,03_Mallard/standing.jpg,M2,Standing male.
+Mallard,flying,03_Mallard/flying.jpg,M3,Pair in flight.
+Mallard,male,03_Mallard/male.jpg,M2,Adult drake.
+Mallard,female,03_Mallard/female.jpg,M4,Adult hen.
+Mallard,summer_plumage,03_Mallard/summer_plumage.jpg,M5,Drake entering eclipse plumage in summer.
+Mallard,winter_plumage,03_Mallard/winter_plumage.jpg,M6,"Cold-season representative on an icy lake; image is a hen, whose seasonal change is subtle."
+Northern Pintail,sitting,04_Northern_Pintail/sitting.jpg,P1,Resting female.
+Northern Pintail,standing,04_Northern_Pintail/standing.jpg,P2,Standing adult male.
+Northern Pintail,flying,04_Northern_Pintail/flying.jpg,P3,Adult male in flight.
+Northern Pintail,male,04_Northern_Pintail/male.jpg,P2,Adult male.
+Northern Pintail,female,04_Northern_Pintail/female.jpg,P1,Adult female.
+Northern Pintail,summer_plumage,04_Northern_Pintail/summer_plumage.jpg,P2,Breeding/warm-season representative photographed in May.
+Northern Pintail,winter_plumage,04_Northern_Pintail/winter_plumage.jpg,P4,Adult male photographed in January.
+Common Goldeneye,sitting,05_Common_Goldeneye/sitting.jpg,G2,Pair resting/afloat.
+Common Goldeneye,standing,05_Common_Goldeneye/standing.jpg,G3,Female on shore.
+Common Goldeneye,flying,05_Common_Goldeneye/flying.jpg,G1,True in-flight photograph.
+Common Goldeneye,male,05_Common_Goldeneye/male.jpg,G4,Adult male.
+Common Goldeneye,female,05_Common_Goldeneye/female.jpg,G3,Adult female.
+Common Goldeneye,summer_plumage,05_Common_Goldeneye/summer_plumage.jpg,G2,Spring/breeding-season representative; no ptarmigan-like full seasonal recoloring.
+Common Goldeneye,winter_plumage,05_Common_Goldeneye/winter_plumage.jpg,G4,Adult male photographed in January.
+Harlequin Duck,sitting,06_Harlequin_Duck/sitting.jpg,H2,Pair resting on coastal rocks.
+Harlequin Duck,standing,06_Harlequin_Duck/standing.jpg,H3,Adult drake perched upright on a rock.
+Harlequin Duck,flying,06_Harlequin_Duck/flying.jpg,H5,"Flock in true flight over Kodiak Island, Alaska."
+Harlequin Duck,male,06_Harlequin_Duck/male.jpg,H3,Adult drake.
+Harlequin Duck,female,06_Harlequin_Duck/female.jpg,H1,Adult female.
+Harlequin Duck,summer_plumage,06_Harlequin_Duck/summer_plumage.jpg,H4,Female in a breeding-stream setting; female seasonal change is subtle.
+Harlequin Duck,winter_plumage,06_Harlequin_Duck/winter_plumage.jpg,H2,Male and female photographed in January on the winter coast.
+Canada Goose,sitting,07_Canada_Goose/sitting.jpg,C1,Sitting/resting beside water.
+Canada Goose,standing,07_Canada_Goose/standing.jpg,C2,Standing adult.
+Canada Goose,flying,07_Canada_Goose/flying.jpg,C3,Flock in flight.
+Canada Goose,male,07_Canada_Goose/male.jpg,C2,Representative adult; male and female plumages are alike and sex is not visually confirmed.
+Canada Goose,female,07_Canada_Goose/female.jpg,C4,Source describes the incubating bird as female.
+Canada Goose,summer_plumage,07_Canada_Goose/summer_plumage.jpg,C2,Warm-season representative; adults do not have a strongly distinct summer plumage.
+Canada Goose,winter_plumage,07_Canada_Goose/winter_plumage.jpg,C5,December photograph; adults do not have a strongly distinct winter plumage.
+Snow Goose,sitting,08_Snow_Goose/sitting.jpg,N2,Adult afloat/resting on water.
+Snow Goose,standing,08_Snow_Goose/standing.jpg,N2,Adult white-morph representative; the same source also satisfies resting posture.
+Snow Goose,flying,08_Snow_Goose/flying.jpg,N1,Flock in true flight.
+Snow Goose,male,08_Snow_Goose/male.jpg,N2,Representative adult; sexes are alike and sex is not visually confirmed.
+Snow Goose,female,08_Snow_Goose/female.jpg,N2,Representative adult; sexes are alike and sex is not visually confirmed.
+Snow Goose,summer_plumage,08_Snow_Goose/summer_plumage.jpg,N2,June photograph; adults do not have a strongly distinct summer plumage.
+Snow Goose,winter_plumage,08_Snow_Goose/winter_plumage.jpg,N3,Cold-season/migration representative; adults do not have a strongly distinct winter plumage.
+Brant,sitting,09_Brant/sitting.jpg,B4,Swimming/resting on water.
+Brant,standing,09_Brant/standing.jpg,B2,Standing adults.
+Brant,flying,09_Brant/flying.jpg,B1,True in-flight photograph.
+Brant,male,09_Brant/male.jpg,B2,Representative adult; sexes are alike and sex is not visually confirmed.
+Brant,female,09_Brant/female.jpg,B2,Representative adult; sexes are alike and sex is not visually confirmed.
+Brant,summer_plumage,09_Brant/summer_plumage.jpg,B2,Spring/warm-season representative; adults do not have a strongly distinct summer plumage.
+Brant,winter_plumage,09_Brant/winter_plumage.jpg,B3,Late-November photograph; adult seasonal plumage differences are subtle.
+Sandhill Crane,sitting,10_Sandhill_Crane/sitting.jpg,R1,Adult incubating on a nest.
+Sandhill Crane,standing,10_Sandhill_Crane/standing.jpg,R3,Standing adult.
+Sandhill Crane,flying,10_Sandhill_Crane/flying.jpg,R2,True in-flight photograph.
+Sandhill Crane,male,10_Sandhill_Crane/male.jpg,R3,Representative adult; sexes are very similar and sex is not visually confirmed.
+Sandhill Crane,female,10_Sandhill_Crane/female.jpg,R1,Nesting-adult representative; sex is not visually confirmed from the image alone.
+Sandhill Crane,summer_plumage,10_Sandhill_Crane/summer_plumage.jpg,R1,Breeding-season representative photographed in May.
+Sandhill Crane,winter_plumage,10_Sandhill_Crane/winter_plumage.jpg,R2,January photograph; adult seasonal differences are subtle.

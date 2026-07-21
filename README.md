@@ -13,6 +13,7 @@ Version 1.0 is a playable static PWA. The production flow includes splash, campa
 ## Features
 
 - Crisp original pixel-art direction with layered Alaska scenery, animated flight and feathers, weather-ready palettes, HUD impact feedback, and optional accessibility effects.
+- Ten reference-informed animated bird sprite sheets with four flight frames across four documented sex, morph, age, or seasonal variants, used in live hunts and the field guide.
 - Campaign spanning 12 named Alaska habitats, plus Classic Hunt, Endless Migration, Species Challenge, Identification Challenge, Time Trial, Practice Range, Daily Seed, and Custom Hunt.
 - Seeded reproducible rounds with species roles, wind, weather, visibility, formations, flock size, speed, altitude, ammunition, and varied flight behaviors.
 - Keyboard, mouse, touch-pointer, fullscreen, abstract controller packets, and a simulated future Zapper pathway.

@@ -1,0 +1,90 @@
+Willow Ptarmigan
+  - female.jpg
+  - flying.jpg
+  - male.jpg
+  - sitting.jpg
+  - standing.jpg
+  - summer_plumage.jpg
+  - winter_plumage.jpg
+
+Spruce Grouse
+  - female.jpg
+  - flying_NOT_FOUND.txt
+  - male.jpg
+  - sitting.jpg
+  - standing.jpg
+  - summer_plumage.jpg
+  - winter_plumage.jpg
+
+Mallard
+  - female.jpg
+  - flying.jpg
+  - male.jpg
+  - sitting.jpg
+  - standing.jpg
+  - summer_plumage.jpg
+  - winter_plumage.jpg
+
+Northern Pintail
+  - female.jpg
+  - flying.jpg
+  - male.jpg
+  - sitting.jpg
+  - standing.jpg
+  - summer_plumage.jpg
+  - winter_plumage.jpg
+
+Common Goldeneye
+  - female.jpg
+  - flying.jpg
+  - male.jpg
+  - sitting.jpg
+  - standing.jpg
+  - summer_plumage.jpg
+  - winter_plumage.jpg
+
+Harlequin Duck
+  - female.jpg
+  - flying.jpg
+  - male.jpg
+  - sitting.jpg
+  - standing.jpg
+  - summer_plumage.jpg
+  - winter_plumage.jpg
+
+Canada Goose
+  - female.jpg
+  - flying.jpg
+  - male.jpg
+  - sitting.jpg
+  - standing.jpg
+  - summer_plumage.jpg
+  - winter_plumage.jpg
+
+Snow Goose
+  - female.jpg
+  - flying.jpg
+  - male.jpg
+  - sitting.jpg
+  - standing.jpg
+  - summer_plumage.jpg
+  - winter_plumage.jpg
+
+Brant
+  - female.jpg
+  - flying.jpg
+  - male.jpg
+  - sitting.jpg
+  - standing.jpg
+  - summer_plumage.jpg
+  - winter_plumage.jpg
+
+Sandhill Crane
+  - female.jpg
+  - flying.jpg
+  - male.jpg
+  - sitting.jpg
+  - standing.jpg
+  - summer_plumage.jpg
+  - winter_plumage.jpg
+

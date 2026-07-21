@@ -1,14 +1,17 @@
 import Phaser from 'phaser';
 import { locations, species } from '../data/content';
+import { birdSprites, birdSpriteBySpecies } from '../data/bird-sprites';
 import { SeededRandom } from '../core/rng';
 
-interface Bird extends Phaser.GameObjects.Container {
+type BirdObject = Phaser.GameObjects.Container | Phaser.GameObjects.Sprite;
+type Bird = BirdObject & {
   vx: number;
   vy: number;
   birdId: string;
   valid: boolean;
   born: number;
-}
+  hitRadius: number;
+};
 export class HuntScene extends Phaser.Scene {
   private reticle!: Phaser.GameObjects.Container;
   private birds: Bird[] = [];
@@ -26,6 +29,11 @@ export class HuntScene extends Phaser.Scene {
   private moveKeys?: Record<'up' | 'down' | 'left' | 'right', Phaser.Input.Keyboard.Key>;
   constructor() {
     super('hunt');
+  }
+  preload() {
+    for (const sprite of birdSprites) {
+      this.load.spritesheet(sprite.textureKey, sprite.path, { frameWidth: 128, frameHeight: 128 });
+    }
   }
   create(data: { seed?: string; location?: number } = {}) {
     this.rng = new SeededRandom(
@@ -98,40 +106,68 @@ export class HuntScene extends Phaser.Scene {
   }
   private spawnBird() {
     const valid = this.rng.next() > 0.18;
-    const targets = species.filter((s) => s.target);
+    const targets = species.filter((s) => s.target && birdSpriteBySpecies.has(s.id));
     const entry = valid
       ? targets[this.rng.int(0, targets.length - 1)]
       : species.find((s) => !s.target);
     if (!entry) return;
     const fromLeft = this.rng.next() > 0.5;
-    const body = this.add
-      .ellipse(0, 0, 45, 22, valid ? 0xc9b17a : 0x6fa4a5)
-      .setStrokeStyle(3, 0x0c1d25);
-    const wing = this.add
-      .triangle(-2, -2, -18, 0, 0, -30, 15, 0, valid ? 0x665c49 : 0xe8e2d3)
-      .setStrokeStyle(2, 0x0c1d25);
-    const head = this.add
-      .circle(22, -3, 8, entry.id === 'spectacled' ? 0xe8e2d3 : 0x293b35)
-      .setStrokeStyle(2, 0x0c1d25);
-    const bird = this.add.container(
-      fromLeft ? -50 : this.scale.width + 50,
-      110 + this.rng.next() * this.scale.height * 0.45,
-      [wing, body, head],
-    ) as Bird;
-    bird.setSize(60, 48);
+    const x = fromLeft ? -70 : this.scale.width + 70;
+    const y = 110 + this.rng.next() * this.scale.height * 0.45;
+    const spriteDefinition = birdSpriteBySpecies.get(entry.id);
+    let bird: Bird;
+    if (spriteDefinition) {
+      const variant = this.rng.int(0, 3);
+      const animationKey = `${spriteDefinition.textureKey}-flight-${variant}`;
+      if (!this.anims.exists(animationKey)) {
+        this.anims.create({
+          key: animationKey,
+          frames: this.anims.generateFrameNumbers(spriteDefinition.textureKey, {
+            start: variant * 4,
+            end: variant * 4 + 3,
+          }),
+          frameRate: 8,
+          repeat: -1,
+        });
+      }
+      const sprite = this.add
+        .sprite(x, y, spriteDefinition.textureKey, variant * 4)
+        .setScale(spriteDefinition.displayScale)
+        .setFlipX(!fromLeft)
+        .play(animationKey);
+      bird = sprite as Bird;
+      bird.hitRadius = spriteDefinition.hitRadius;
+    } else {
+      const body = this.add
+        .ellipse(0, 0, 45, 22, valid ? 0xc9b17a : 0x6fa4a5)
+        .setStrokeStyle(3, 0x0c1d25);
+      const wing = this.add
+        .triangle(-2, -2, -18, 0, 0, -30, 15, 0, valid ? 0x665c49 : 0xe8e2d3)
+        .setStrokeStyle(2, 0x0c1d25);
+      const head = this.add
+        .circle(22, -3, 8, entry.id === 'spectacled' ? 0xe8e2d3 : 0x293b35)
+        .setStrokeStyle(2, 0x0c1d25);
+      bird = this.add.container(x, y, [wing, body, head]) as Bird;
+      bird.hitRadius = 35;
+      this.tweens.add({
+        targets: wing,
+        scaleY: 0.35,
+        yoyo: true,
+        repeat: -1,
+        duration: 120 + this.rng.next() * 90,
+      });
+    }
+    bird.setSize(bird.hitRadius * 2, bird.hitRadius * 1.5);
     bird.vx = (fromLeft ? 1 : -1) * (120 + this.rng.next() * 150);
     bird.vy = -25 + this.rng.next() * 50;
     bird.birdId = entry.id;
     bird.valid = valid;
     bird.born = this.time.now;
-    this.tweens.add({
-      targets: wing,
-      scaleY: 0.35,
-      yoyo: true,
-      repeat: -1,
-      duration: 120 + this.rng.next() * 90,
-    });
     this.birds.push(bird);
+    this.events.emit('bird-spawned', {
+      speciesId: entry.id,
+      illustrated: Boolean(spriteDefinition),
+    });
   }
   fire(x: number, y: number) {
     if (this.paused || this.ended) return;
@@ -145,7 +181,7 @@ export class HuntScene extends Phaser.Scene {
     let hit: Bird | undefined;
     for (let i = this.birds.length - 1; i >= 0; i--) {
       const b = this.birds[i]!;
-      if (Phaser.Math.Distance.Between(x, y, b.x, b.y) < 35) {
+      if (Phaser.Math.Distance.Between(x, y, b.x, b.y) < b.hitRadius) {
         hit = b;
         break;
       }
@@ -186,12 +222,12 @@ export class HuntScene extends Phaser.Scene {
   }
   resumeHunt() {
     this.paused = false;
-    this.physics.world.isPaused = false;
+    if (this.physics?.world) this.physics.world.isPaused = false;
     this.events.emit('pause', false);
   }
   pauseHunt() {
     this.paused = true;
-    this.physics.world.isPaused = true;
+    if (this.physics?.world) this.physics.world.isPaused = true;
     this.events.emit('pause', true);
   }
   private feathers(x: number, y: number, color: number) {

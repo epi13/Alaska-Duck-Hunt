@@ -547,6 +547,26 @@ footer {
   color: var(--amber);
   text-align: center;
 }
+.guide-bird.has-sprite {
+  width: 128px;
+  height: 128px;
+  margin: 0 auto;
+  background-repeat: no-repeat;
+  background-position: 0 0;
+  background-size: 400% 400%;
+  image-rendering: pixelated;
+  animation: guide-flap 700ms steps(3) infinite;
+}
+@keyframes guide-flap {
+  to {
+    background-position-x: 100%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .guide-bird.has-sprite {
+    animation: none;
+  }
+}
 .guide-bird.protected {
   color: var(--coral);
 }

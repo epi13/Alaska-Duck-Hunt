@@ -14,6 +14,10 @@ export default defineConfig({
     VitePWA({
       registerType: 'prompt',
       includeAssets: ['assets/icon.svg'],
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,json}'],
+        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
+      },
       manifest: {
         name: 'Alaska Duck Hunt',
         short_name: 'AK Duck Hunt',

@@ -11,6 +11,14 @@ The project separates stable natural-history information from frequently changin
 
 Every citation record stores its direct URL, publisher, document or page title, publication year when known, access date, and last verification date. Archived copies may support provenance but never override a current official publication.
 
+## 2026-07-20 verification record
+
+- [Alaska Hunting Regulations](https://www.adfg.alaska.gov/index.cfm?adfg=wildliferegulations.hunting), Alaska Department of Fish and Game; current regulations index and waterfowl booklet access, verified 2026-07-20.
+- [2026 Alaska Subsistence Spring/Summer Migratory Bird Harvest](https://www.fws.gov/subsistence-springsummer-bird-harvest-alaska), U.S. Fish and Wildlife Service; official open-species framework used only to confirm broad game-bird context for Common Goldeneye, Canada Goose, and Snow Goose, verified 2026-07-20.
+- [Waterfowl Hunting Permit Requirements](https://www.adfg.alaska.gov/index.cfm?adfg=huntlicense.waterfowl), Alaska Department of Fish and Game; confirms that location- and population-specific permits or restrictions can apply, verified 2026-07-20.
+
+These sources do not make a species universally legal to hunt. The game stores no real season date or bag limit, and its fictional target role never overrides current regulations, emergency orders, land-manager rules, residency requirements, permits, or population-specific closures.
+
 ## Release review checklist
 
 - Verify category and broad hunting-status language against current official publications.
@@ -25,4 +33,3 @@ Every citation record stores its direct URL, publisher, document or page title, 
 > **Not legal hunting advice.** Alaska hunting rules vary by year, region, unit or zone, species, population, residency, permit or registration, subsistence eligibility, land manager, hunting method, and emergency order. Game ammunition, objectives, seasons, and limits are fictional. Consult current Alaska Department of Fish and Game, U.S. Fish and Wildlife Service, applicable federal land-manager, and local regulations before any real hunt.
 
 The notice appears on first launch, in briefings, in the field guide, and on the legal screen. Acknowledgment means only that the player understands the game is fictional; it is not a safety or legal certification.
-

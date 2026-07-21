@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { HuntScene } from './game/HuntScene';
 import { LEGAL_DISCLAIMER, locations, modes, species, type GameMode } from './data/content';
+import { birdSpriteBySpecies } from './data/bird-sprites';
 import { AudioManager } from './services/audio';
 import { BrowserInputProvider, type InputEvent } from './core/input';
 import './styles/main.css';
@@ -86,7 +87,7 @@ function startHunt() {
   browserInput = undefined;
   game?.destroy(true);
   game = undefined;
-  root.innerHTML = `<div id="game"></div><div id="aim-layer" aria-label="Hunt aiming surface" data-shots="0"></div><div class="hud"><div><small>SCORE</small><b id="score">000000</b><span id="combo">COMBO ×0</span></div><div class="objective">PINTAIL • FIELD ROUND</div><div><small>TIME</small><b id="time">01:00</b></div></div><div class="ammo"><small>SHELLS</small><b id="ammo">●●●●●</b><span>R RELOAD</span></div><div id="notice" aria-live="polite"></div><div id="pause" class="overlay hidden"><h2>HUNT PAUSED</h2><button id="resume">RESUME</button><button id="quit">RETURN TO MENU</button></div>`;
+  root.innerHTML = `<div id="game"></div><div id="aim-layer" aria-label="Hunt aiming surface" data-shots="0" data-sprite-birds="0"></div><div class="hud"><div><small>SCORE</small><b id="score">000000</b><span id="combo">COMBO ×0</span></div><div class="objective">PINTAIL • FIELD ROUND</div><div><small>TIME</small><b id="time">01:00</b></div></div><div class="ammo"><small>SHELLS</small><b id="ammo">●●●●●</b><span>R RELOAD</span></div><div id="notice" aria-live="polite"></div><div id="pause" class="overlay hidden"><h2>HUNT PAUSED</h2><button id="resume">RESUME</button><button id="quit">RETURN TO MENU</button></div>`;
   const scene = new HuntScene();
   game = new Phaser.Game({
     type: Phaser.AUTO,
@@ -146,6 +147,17 @@ function startHunt() {
         aimLayer?.setAttribute('data-aim-x', x.toFixed(2));
         aimLayer?.setAttribute('data-aim-y', y.toFixed(2));
       });
+      scene.events.on(
+        'bird-spawned',
+        ({ speciesId, illustrated }: { speciesId: string; illustrated: boolean }) => {
+          aimLayer?.setAttribute('data-last-bird', speciesId);
+          if (illustrated && aimLayer) {
+            const count = Number(aimLayer.dataset.spriteBirds ?? 0) + 1;
+            aimLayer.dataset.spriteBirds = String(count);
+            aimLayer.dataset.lastIllustratedBird = speciesId;
+          }
+        },
+      );
       scene.events.on('notice', (n: string) => {
         audio.shot();
         const el = document.querySelector('#notice');
@@ -200,8 +212,14 @@ function results(r: { score: number; hits: number; shots: number; accuracy: numb
 }
 function guide() {
   shell(
-    `<section class="page"><div class="section-title"><p>IDENTIFY BEFORE YOU ACT</p><h1>FIELD GUIDE</h1></div><p class="disclaimer">${LEGAL_DISCLAIMER}</p><div class="guide-grid">${species.map((s) => `<article><div class="guide-bird ${s.target ? '' : 'protected'}">⌁</div><p>${s.category.toUpperCase()}</p><h2>${s.common}</h2><i>${s.scientific}</i><p>${s.traits}</p><details><summary>FIELD NOTES</summary><p><b>Habitat:</b> ${s.habitat}<br><b>Flight:</b> ${s.flight}<br><b>Range:</b> ${s.distribution}<br><b>Status:</b> ${s.status}<br><b>Similar:</b> ${s.similar.join(', ') || 'None listed'}<br><b>Protected lookalikes:</b> ${s.lookalikes.join(', ') || 'Consult current guide'}<br><b>Source:</b> ${s.source}<br><b>Verified:</b> 2026-07-19</p></details></article>`).join('')}</div></section>`,
+    `<section class="page"><div class="section-title"><p>IDENTIFY BEFORE YOU ACT</p><h1>FIELD GUIDE</h1></div><p class="disclaimer">${LEGAL_DISCLAIMER}</p><div class="guide-grid">${species.map((s) => `<article>${fieldGuideBird(s.id, s.common, s.target)}<p>${s.category.toUpperCase()}</p><h2>${s.common}</h2><i>${s.scientific}</i><p>${s.traits}</p><details><summary>FIELD NOTES</summary><p><b>Habitat:</b> ${s.habitat}<br><b>Flight:</b> ${s.flight}<br><b>Range:</b> ${s.distribution}<br><b>Status:</b> ${s.status}<br><b>Similar:</b> ${s.similar.join(', ') || 'None listed'}<br><b>Protected lookalikes:</b> ${s.lookalikes.join(', ') || 'Consult current guide'}<br><b>Source:</b> ${s.source}<br><b>Verified:</b> ${s.lastVerified ?? '2026-07-19'}</p></details></article>`).join('')}</div></section>`,
   );
+}
+function fieldGuideBird(id: string, common: string, target: boolean) {
+  const art = birdSpriteBySpecies.get(id);
+  if (!art)
+    return `<div class="guide-bird ${target ? '' : 'protected'}" role="img" aria-label="${common} silhouette">⌁</div>`;
+  return `<div class="guide-bird has-sprite" role="img" aria-label="Animated ${common} pixel art" style="background-image:url('${art.path}')"></div>`;
 }
 function settings() {
   shell(

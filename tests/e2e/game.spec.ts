@@ -10,9 +10,7 @@ test.beforeEach(async ({ page }) => {
   page.on('console', (message) => {
     if (forbiddenConsole.test(message.text())) failures.push(message.text());
   });
-  page.on('pageerror', (error) => {
-    if (forbiddenConsole.test(error.message)) failures.push(error.message);
-  });
+  page.on('pageerror', (error) => failures.push(error.message));
   await page.goto('/');
   await enterMenu(page);
   await expect(page.getByText('THE MIGRATION')).toBeVisible();
@@ -33,6 +31,7 @@ async function startHunt(page: Page) {
   await page.locator('#start-hunt').click();
   await expect(page.locator('canvas')).toBeVisible();
   await expect(page.locator('#aim-layer')).toHaveAttribute('data-shots', '0');
+  await expect(page.locator('#aim-layer')).toHaveAttribute('data-sprite-birds', '0');
 }
 
 test('serves transformed modules with JavaScript MIME and loads the menu', async ({
@@ -62,6 +61,13 @@ test('mouse aims and fires exactly once, pause gates fire, and resume restores i
 }) => {
   await startHunt(page);
   const surface = page.locator('#aim-layer');
+  await expect
+    .poll(async () => Number(await surface.getAttribute('data-sprite-birds')))
+    .toBeGreaterThan(0);
+  await expect(surface).toHaveAttribute(
+    'data-last-illustrated-bird',
+    /ptarmigan|grouse|mallard|pintail|goldeneye|harlequin|canada-goose|snow-goose|brant|crane/,
+  );
   const bounds = await surface.boundingBox();
   expect(bounds).not.toBeNull();
   await page.mouse.move(bounds!.x + bounds!.width * 0.7, bounds!.y + bounds!.height * 0.35);
@@ -103,6 +109,10 @@ test('field guide, manifest, and responsive mobile layout', async ({ page }) => 
   await page.locator('[data-go="guide"]').first().click();
   await expect(page.getByRole('heading', { name: 'FIELD GUIDE' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Spectacled Eider' })).toBeVisible();
+  await expect(page.locator('.guide-bird.has-sprite')).toHaveCount(10);
+  const sheet = await page.request.get('/assets/birds/mallard.png');
+  expect(sheet.ok()).toBeTruthy();
+  expect(sheet.headers()['content-type']).toContain('image/png');
   const manifest = await page.request.get('/manifest.webmanifest');
   expect(manifest.ok()).toBeTruthy();
   await page.setViewportSize({ width: 390, height: 844 });
