@@ -4,6 +4,7 @@ import { LEGAL_DISCLAIMER, locations, modes, species, type GameMode } from './da
 import { birdSpriteBySpecies } from './data/bird-sprites';
 import { birdBehaviorBySpecies } from './data/bird-behaviors';
 import { sceneMapByLocation } from './data/scene-maps';
+import { scenePropLayoutByLocation } from './data/scene-props';
 import { AudioManager } from './services/audio';
 import { BrowserInputProvider, type InputEvent } from './core/input';
 import './styles/main.css';
@@ -93,7 +94,8 @@ function startHunt() {
   const locationIndex = Number(sessionStorage.getItem('location') ?? 2);
   const selectedLocation = locations[locationIndex] ?? locations[2]!;
   const selectedSceneMap = sceneMapByLocation.get(selectedLocation.id);
-  root.innerHTML = `<div id="game"></div><div id="aim-layer" aria-label="Hunt aiming surface" data-shots="0" data-sprite-birds="0" data-scene-layers="4" data-dog-layer="ground" data-location-id="${selectedLocation.id}" data-scene-background="assets/scenes/${selectedLocation.id}.png" data-scene-map-regions="${selectedSceneMap?.regions.length ?? 0}" data-dog-path-ids="${selectedSceneMap?.dogPatrolPaths.map(({ id }) => id).join(',') ?? ''}" data-scene-map-debug="${new URLSearchParams(location.search).get('debugSceneMap') === '1'}"></div><div class="hud"><div><small>SCORE</small><b id="score">000000</b><span id="combo">COMBO ×0</span></div><div class="objective">PINTAIL • FIELD ROUND</div><div><small>TIME</small><b id="time">01:00</b></div></div><div class="ammo"><small>SHELLS</small><b id="ammo">●●●●●</b><span>R RELOAD</span></div><div id="notice" aria-live="polite"></div><div id="pause" class="overlay hidden"><h2>HUNT PAUSED</h2><button id="resume">RESUME</button><button id="quit">RETURN TO MENU</button></div>`;
+  const selectedPropLayout = scenePropLayoutByLocation.get(selectedLocation.id);
+  root.innerHTML = `<div id="game"></div><div id="aim-layer" aria-label="Hunt aiming surface" data-shots="0" data-sprite-birds="0" data-scene-layers="4" data-dog-layer="ground" data-location-id="${selectedLocation.id}" data-scene-background="assets/scenes/${selectedLocation.id}.png" data-scene-map-regions="${selectedSceneMap?.regions.length ?? 0}" data-scene-prop-count="${selectedPropLayout?.placements.length ?? 0}" data-scene-prop-invalid="0" data-dog-path-ids="${selectedSceneMap?.dogPatrolPaths.map(({ id }) => id).join(',') ?? ''}" data-scene-map-debug="${new URLSearchParams(location.search).get('debugSceneMap') === '1'}"></div><div class="hud"><div><small>SCORE</small><b id="score">000000</b><span id="combo">COMBO ×0</span></div><div class="objective">PINTAIL • FIELD ROUND</div><div><small>TIME</small><b id="time">01:00</b></div></div><div class="ammo"><small>SHELLS</small><b id="ammo">●●●●●</b><span>R RELOAD</span></div><div id="notice" aria-live="polite"></div><div id="pause" class="overlay hidden"><h2>HUNT PAUSED</h2><button id="resume">RESUME</button><button id="quit">RETURN TO MENU</button></div>`;
   const scene = new HuntScene(locationIndex);
   game = new Phaser.Game({
     type: Phaser.AUTO,
@@ -192,6 +194,31 @@ function startHunt() {
         },
       );
       scene.events.on(
+        'scene-prop-position',
+        ({ id, worldX, worldY, depth }: { id: string; worldX: number; worldY: number; depth: number }) => {
+          aimLayer?.setAttribute('data-scene-prop-id', id);
+          aimLayer?.setAttribute('data-scene-prop-world-x', worldX.toFixed(2));
+          aimLayer?.setAttribute('data-scene-prop-world-y', worldY.toFixed(2));
+          aimLayer?.setAttribute('data-scene-prop-depth', depth.toFixed(2));
+        },
+      );
+      scene.events.on(
+        'scene-props-ready',
+        ({ count, invalidCount }: { count: number; invalidCount: number }) => {
+          aimLayer?.setAttribute('data-scene-prop-count', String(count));
+          aimLayer?.setAttribute('data-scene-prop-invalid', String(invalidCount));
+        },
+      );
+      scene.events.on(
+        'bird-prop-depth',
+        ({ propId, depth, occlusion, relation }: { propId?: string; depth: number; occlusion: number; relation: string }) => {
+          aimLayer?.setAttribute('data-bird-prop-id', propId ?? 'none');
+          aimLayer?.setAttribute('data-bird-display-depth', depth.toFixed(2));
+          aimLayer?.setAttribute('data-bird-prop-occlusion', occlusion.toFixed(2));
+          aimLayer?.setAttribute('data-bird-prop-relation', relation);
+        },
+      );
+      scene.events.on(
         'scene-map-selected',
         ({ sceneRegionId, surface, sceneDepth, worldX, worldY }: { sceneRegionId: string; surface: string; sceneDepth: number; worldX: number; worldY: number }) => {
           aimLayer?.setAttribute('data-scene-region-id', sceneRegionId);
@@ -210,10 +237,13 @@ function startHunt() {
       );
       scene.events.on(
         'dog-map-position',
-        ({ pathId, worldX, worldY }: { pathId: string; worldX: number; worldY: number }) => {
+        ({ pathId, worldX, worldY, depth, propId, relation }: { pathId: string; worldX: number; worldY: number; depth: number; propId?: string; relation: string }) => {
           aimLayer?.setAttribute('data-dog-path-id', pathId);
           aimLayer?.setAttribute('data-dog-world-x', worldX.toFixed(2));
           aimLayer?.setAttribute('data-dog-world-y', worldY.toFixed(2));
+          aimLayer?.setAttribute('data-dog-display-depth', depth.toFixed(2));
+          aimLayer?.setAttribute('data-dog-prop-id', propId ?? 'none');
+          aimLayer?.setAttribute('data-dog-prop-relation', relation);
         },
       );
       scene.events.on(

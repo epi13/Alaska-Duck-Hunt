@@ -19,9 +19,9 @@ Scene plates use cover scaling. `createCoverTransform` applies the same scale an
 1. Open the exact 1280×720 production PNG, not a generated source or screenshot.
 2. Trace visible semantic areas clockwise with normalized `(pixelX / 1280, pixelY / 720)` points. Use a path for a narrow waterline, shoreline, river edge, branch, or perch; use a polygon for an area.
 3. Keep ground and water geometry inside visibly corresponding pixels. Add explicit no-spawn polygons for sky or ambiguous gaps. Do not use a broad rectangle that includes open sky.
-4. Author perspective depth and scale from far to near. Set display depth relative to background `0`, waterline/ground props around `44`, dog around `58`, foreground props around `70`, and reticle/debug UI above them.
+4. Author perspective depth and scale from far to near. Region display depth guides grounded actors; environmental prop depths are derived separately from their authored layer and perspective in `scene-props.ts`.
 5. Trace at least one continuous, visibly grounded dog corridor. Curves are represented by short connected segments.
-6. Add foreground-occlusion areas wherever checked-in foreground art may cover a placement. These are mapping hooks; the scene vegetation itself is intentionally not redesigned here.
+6. Add broad foreground-occlusion areas for map-level queries. Individual environmental props define tighter occlusion geometry in `scene-props.ts`; see [scene-map prop placement](scene-props.md).
 7. If a region is biologically or visually restricted, add `birdFamilies` or `species`. Keep this data descriptive; game regulations do not belong in scene maps.
 8. Run `npm test` and `npm run validate:assets`. Catalog tests require all twelve maps, valid normalized geometry, unique ids, dog paths, no-spawn areas, and occlusion hooks.
 9. Launch `npm run dev` and append `?debugSceneMap=1`. The development overlay draws surface polygons, shoreline/branch paths, dog patrols, depth labels, recent deterministic samples, no-spawn areas, foreground occlusion, and the currently selected region/surface/position. Check desktop, tablet, and mobile aspect ratios.

@@ -4,6 +4,10 @@ Last updated: 2026-07-21
 
 ## Completed work
 
+- Replaced shared regional prop-coordinate templates with 96 individually authored, stable placements across all twelve backgrounds. Every plant, rock, log, branch, snow element, and shoreline piece names a compatible semantic scene-map region and carries typed layer, perspective, scale, origin, occlusion, wind, bird-relation, and dog-pass metadata.
+- Moved prop rendering and responsive layout out of `HuntScene` into `ScenePropSystem`. Prop depth now follows layer and perspective; grounded birds combine state and environmental occlusion for targetability, while birds and the dog move naturally behind or in front of nearby mapped cover.
+- Extended `?debugSceneMap=1` with prop anchors, bounds, layer/depth labels, occlusion polygons, invalid-placement diagnostics, and actor/prop depth relationships. Added placement/depth telemetry, pure validation/occlusion tests, six-family Playwright screenshots, and `docs/scene-props.md`.
+
 - Replaced rectangular surface/Y approximations with typed, deterministic semantic scene maps authored against all twelve 1280×720 production plates. Pure geometry supports surface lookup, polygon/path sampling, no-spawn rejection, projection, depth/scale/occlusion metadata, and cover-aware responsive coordinate transforms; Phaser only adapts those results to world coordinates.
 - Anchored water, ground, shoreline, river-edge, rocky-coast, and low-branch birds to mapped visible image features. Surface-bound birds reproject while moving and relayout from normalized anchors after resize; the retriever now follows a location-authored curved/segmented corridor instead of a fixed `0.94 × height` line.
 - Added `?debugSceneMap=1` visualization for semantic regions, depths, paths, samples, no-spawn polygons, occlusion hooks, and the current selection. Added DOM telemetry for region id, depth, selected world position, dog path, and dog world position, plus unit and Playwright coverage across desktop/mobile cover crops.
@@ -45,6 +49,8 @@ Last updated: 2026-07-21
 - Diagnosed a second occurrence after the same long-lived terminal relaunched `python -m http.server` as PID 284442. Stopped only that project-local process, restarted Vite on port 8000, added an explicit SVG favicon, and added browser coverage for its successful MIME response.
 
 ## Repair files and validation
+
+- Scene-prop phase validation: `npm install` audited 474 packages with 0 vulnerabilities; `npm run typecheck`, `npm run lint`, `npm test` (32/32), `npm run validate:assets`, `npm run build`, `npm run test:e2e` (10/10 Chromium), and `npm run check` passed. Six 1280×720 Playwright captures cover wetland, forest, coastal, tundra, alpine, and snow layouts; mobile debug QA at 390×844 verifies in-bounds prop, bird, and dog telemetry after cover-crop resize. Browser plugin was unavailable, so repository Playwright was used. The known non-failing Phaser bundle warning remains.
 
 - Semantic scene-map validation: `npm install` audited 474 packages with 0 vulnerabilities; `npm run typecheck`, `npm run lint`, `npm test` (28/28), `npm run validate:assets`, `npm run build`, `npm run test:e2e` (9/9 Chromium), and `npm run check` passed. Workbox precaches 81 entries (about 29.8 MB). Playwright visual QA at 1440×900 and 390×844 used `?debugSceneMap=1`, showed aligned polygons/paths and in-bounds bird/dog telemetry after cover-crop resize, and reported no console or page errors. The Browser plugin was unavailable, so repository Playwright was used.
 

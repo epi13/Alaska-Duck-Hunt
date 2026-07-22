@@ -4,6 +4,7 @@ import { retrieverSheet } from '../../data/scene-art';
 import { samplePathAt, type DogPatrolPath } from '../../core/scenes/scene-map';
 import type { SeededRandom } from '../../core/rng';
 import type { SceneMapSystem } from './SceneMapSystem';
+import type { ScenePropSystem } from './ScenePropSystem';
 
 export class DogFlushSystem {
   readonly sprite: Phaser.GameObjects.Sprite;
@@ -12,7 +13,7 @@ export class DogFlushSystem {
   private progress = 0;
   private progressRange: readonly [number, number] = [0, 1];
   private readonly path: DogPatrolPath;
-  constructor(private scene: Phaser.Scene, private sceneMap: SceneMapSystem, rng: SeededRandom) {
+  constructor(private scene: Phaser.Scene, private sceneMap: SceneMapSystem, private sceneProps: ScenePropSystem, rng: SeededRandom) {
     this.path = rng.pick(sceneMap.dogPatrolPaths());
     for (const [key, start, end, frameRate] of [['search', 4, 7, 7], ['bound', 8, 11, 9], ['run', 0, 3, 10]] as const) {
       const animationKey = `retriever-${key}`;
@@ -31,11 +32,11 @@ export class DogFlushSystem {
       this.sprite.setFlipX(this.direction < 0);
     }
     this.positionOnPath(nowMs);
-    if (nowMs >= this.boundUntil) this.sprite.setDepth(this.path.displayDepth).play('retriever-search', true);
+    if (nowMs >= this.boundUntil) this.sprite.play('retriever-search', true);
     for (const bird of birds) {
       if (bird.disturb(this.sprite.x, this.sprite.y, nowMs)) {
         this.boundUntil = nowMs + 520;
-        this.sprite.setDepth(76).play('retriever-bound', true);
+        this.sprite.play('retriever-bound', true);
         this.scene.events.emit('dog-flush', { speciesId: bird.plan.speciesId, surface: bird.plan.surface, initialState: bird.state });
       }
     }
@@ -58,6 +59,8 @@ export class DogFlushSystem {
     const scale = this.path.objectScale[0] + (this.path.objectScale[1] - this.path.objectScale[0]) * normalized.y;
     this.sprite.setPosition(world.x, world.y - (nowMs < this.boundUntil ? Math.sin((this.boundUntil - nowMs) / 190) * 24 : 0));
     this.sprite.setScale(this.sceneMap.worldObjectScale(scale));
-    this.scene.events.emit('dog-map-position', { pathId: this.path.id, worldX: world.x, worldY: world.y, progress: this.progress });
+    const propDepth = this.sceneProps.resolveActor(normalized, this.path.displayDepth, 'dog');
+    this.sprite.setDepth(propDepth.depth);
+    this.scene.events.emit('dog-map-position', { pathId: this.path.id, worldX: world.x, worldY: world.y, progress: this.progress, depth: propDepth.depth, propId: propDepth.propId, relation: propDepth.relation });
   }
 }

@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import type { BirdSurface } from '../../core/birds/bird-plan';
 import type { SeededRandom } from '../../core/rng';
+import { propOcclusionPolygon, scenePropDisplayDepth, type ScenePropPlacement, type ScenePropValidation } from '../../core/scenes/scene-props';
 import {
   createCoverTransform,
   normalizedToWorld,
@@ -29,6 +30,8 @@ export class SceneMapSystem {
   private debugLabels: Phaser.GameObjects.Text[] = [];
   private selected?: WorldScenePoint;
   private readonly samples: WorldScenePoint[] = [];
+  private propDebug: readonly { placement: ScenePropPlacement; validation: ScenePropValidation }[] = [];
+  private readonly actorDepthDebug = new Map<string, string>();
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -43,6 +46,19 @@ export class SceneMapSystem {
   resize(width: number, height: number) {
     this.width = width;
     this.height = height;
+    this.redrawDebugOverlay();
+  }
+
+  setPropDebug(placements: readonly ScenePropPlacement[], validations: readonly ScenePropValidation[]) {
+    this.propDebug = placements.map((placement, index) => ({ placement, validation: validations[index] ?? { placementId: placement.id, valid: false, errors: ['missing validation'] } }));
+    this.redrawDebugOverlay();
+  }
+
+  setActorDepthDebug(actor: 'bird' | 'dog', depth: number, propId: string | undefined, relation: string) {
+    this.actorDepthDebug.set(actor, `${actor}: d=${depth.toFixed(1)} ${relation}${propId ? ` ${propId}` : ''}`);
+  }
+
+  refreshDebug() {
     this.redrawDebugOverlay();
   }
 
@@ -138,6 +154,19 @@ export class SceneMapSystem {
       const worldPoints = area.polygon.map((point) => this.toWorld(point));
       this.debugGraphics.lineStyle(1, 0xc77dff, .8).fillStyle(0xc77dff, .08).fillPoints(worldPoints, true).strokePoints(worldPoints, true);
     }
+    for (const { placement, validation } of this.propDebug) {
+      const anchor = this.toWorld(placement.anchor);
+      const color = validation.valid ? 0x00e5ff : 0xff1744;
+      const polygon = propOcclusionPolygon(placement).map((point) => this.toWorld(point));
+      this.debugGraphics.lineStyle(2, color, .95).fillStyle(color, .08).fillPoints(polygon, true).strokePoints(polygon, true);
+      this.debugGraphics.fillStyle(color, 1).fillCircle(anchor.x, anchor.y, validation.valid ? 4 : 7);
+      if (anchor.x >= 0 && anchor.x <= this.width && anchor.y >= 0 && anchor.y <= this.height) {
+        const invalid = validation.valid ? '' : ` INVALID: ${validation.errors.join(',')}`;
+        this.debugLabels.push(this.scene.add.text(anchor.x + 5, anchor.y - 14, `${placement.id}\n${placement.layer} d=${scenePropDisplayDepth(placement).toFixed(1)}${invalid}`, {
+          fontFamily: 'monospace', fontSize: '9px', color: validation.valid ? '#00e5ff' : '#ff1744', backgroundColor: '#071521cc', padding: { x: 2, y: 1 },
+        }).setDepth(98).setScrollFactor(0));
+      }
+    }
     this.debugGraphics.fillStyle(0xffffff, .85);
     for (const sample of this.samples) {
       const world = this.toWorld(sample.point);
@@ -146,7 +175,8 @@ export class SceneMapSystem {
     if (this.selected) {
       const world = this.toWorld(this.selected.point);
       this.debugGraphics.lineStyle(3, 0x00ff88, 1).strokeCircle(world.x, world.y, 9);
-      this.debugLabels.push(this.scene.add.text(8, 8, `SCENE MAP: ${this.map.locationId}\n${this.selected.regionId} • ${this.selected.surface}\ndepth ${this.selected.depth.toFixed(3)} • (${world.x.toFixed(1)}, ${world.y.toFixed(1)})`, {
+      const actorDepths = [...this.actorDepthDebug.values()].join('\n');
+      this.debugLabels.push(this.scene.add.text(8, 8, `SCENE MAP: ${this.map.locationId}\n${this.selected.regionId} • ${this.selected.surface}\ndepth ${this.selected.depth.toFixed(3)} • (${world.x.toFixed(1)}, ${world.y.toFixed(1)})${actorDepths ? `\n${actorDepths}` : ''}`, {
         fontFamily: 'monospace', fontSize: '13px', color: '#00ff88', backgroundColor: '#071521e6', padding: { x: 6, y: 5 },
       }).setDepth(99).setScrollFactor(0));
     }

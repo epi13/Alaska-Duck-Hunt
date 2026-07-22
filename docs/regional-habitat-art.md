@@ -6,6 +6,7 @@ The runtime now treats habitat as two connected data sets:
 
 - `src/data/bird-habitats.ts` limits each species to plausible locations and preferred surfaces.
 - `src/data/scene-maps.ts` maps those surfaces onto authored normalized polygons and paths inside the visible water, shore, meadow, tundra, forest floor, snow, rocky coast, river edge, and low-branch areas of each 1280×720 scene plate.
+- `src/data/scene-props.ts` gives every location its own stable composition of map-region-linked plants, rocks, wood, snow cover, and shoreline details; no shared coordinate template remains authoritative.
 
 `profilesForLocation()` intersects species preferences, behavior capabilities, and visible scene surfaces. A plan therefore cannot select an open-water start in a scene with no open-water region. Deterministic sampling, no-spawn rejection, path/polygon projection, and responsive cover transforms remain pure functions in `src/core/scenes/scene-map.ts`; see [semantic scene maps](scene-maps.md) for the format and authoring workflow.
 
@@ -22,7 +23,9 @@ The runtime now treats habitat as two connected data sets:
 | Aleutian coast | Aleutians | Beach grasses, coastal forbs, lupine, crowberry, wind-shaped shrub, basalt, kelp and surf |
 | Winter willow | Willow/snow scene | Snow-covered willow, spruce, alder, exposed sedge, rocks, logs, ice and narrow open water |
 
-Frames 0–11 are plant/rock/wood cutouts. Frames 12–15 are low, wide water or shore occluders placed at depth 44, immediately in front of resting birds at depth 42. Airborne birds remain above them.
+Frames 0–11 are plant/rock/wood cutouts. Frames 12–15 are low, wide water or shore occluders. Each authored placement now selects its own layer and perspective depth; airborne birds retain their independent flight depth.
+
+Runtime placement and spatial occlusion are documented in [scene-map prop placement](scene-props.md). Prop depths now vary by authored layer and perspective rather than one fixed atlas-wide depth.
 
 ## Natural-history references
 

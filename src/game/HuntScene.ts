@@ -3,12 +3,14 @@ import { SeededRandom } from '../core/rng';
 import { locations } from '../data/content';
 import { birdScoringBySpecies, scoreBird } from '../data/bird-scoring';
 import { birdSprites } from '../data/bird-sprites';
-import { habitatAtlasPaths, retrieverSheet, sceneArt, sceneArtByLocation, type HabitatProp, type SceneArt } from '../data/scene-art';
+import { habitatAtlasPaths, retrieverSheet, sceneArt, sceneArtByLocation, type SceneArt } from '../data/scene-art';
 import { sceneMapByLocation } from '../data/scene-maps';
+import { scenePropLayoutByLocation } from '../data/scene-props';
 import { BirdSpawnSystem } from './systems/BirdSpawnSystem';
 import { DogFlushSystem } from './systems/DogFlushSystem';
 import { registerBirdAnimations } from './systems/BirdAnimationSystem';
 import { SceneMapSystem } from './systems/SceneMapSystem';
+import { ScenePropSystem } from './systems/ScenePropSystem';
 
 export class HuntScene extends Phaser.Scene {
   private reticle!: Phaser.GameObjects.Container;
@@ -24,13 +26,13 @@ export class HuntScene extends Phaser.Scene {
   private cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
   private moveKeys?: Record<'up' | 'down' | 'left' | 'right', Phaser.Input.Keyboard.Key>;
   private background?: Phaser.GameObjects.Image;
-  private habitatProps: { sprite: Phaser.GameObjects.Sprite; spec: HabitatProp; heightScale: number }[] = [];
   private activeSceneArt?: SceneArt;
   private locationName = '';
   private readonly requestedLocation: number;
   private spawnSystem?: BirdSpawnSystem;
   private dogSystem?: DogFlushSystem;
   private sceneMapSystem?: SceneMapSystem;
+  private scenePropSystem?: ScenePropSystem;
   private featherPool: Phaser.GameObjects.Rectangle[] = [];
 
   constructor(location = 2) { super('hunt'); this.requestedLocation = location; }
@@ -49,14 +51,17 @@ export class HuntScene extends Phaser.Scene {
     const loc = locations[data.location ?? this.requestedLocation] ?? locations[2]!;
     this.locationName = loc.name;
     this.cameras.main.setBackgroundColor(loc.palette[3]);
-    this.createHabitat(loc.id);
+    this.createBackground(loc.id);
     const sceneMap = sceneMapByLocation.get(loc.id);
     if (!sceneMap) throw new Error(`No authored scene map for ${loc.id}.`);
     this.sceneMapSystem = new SceneMapSystem(this, sceneMap, new URLSearchParams(location.search).get('debugSceneMap') === '1');
+    const propLayout = scenePropLayoutByLocation.get(loc.id);
+    if (!propLayout) throw new Error(`No authored prop layout for ${loc.id}.`);
+    this.scenePropSystem = new ScenePropSystem(this, this.sceneMapSystem, propLayout);
     registerBirdAnimations(this);
     this.createFeatherPool();
-    this.dogSystem = new DogFlushSystem(this, this.sceneMapSystem, this.rng.fork('dog'));
-    this.spawnSystem = new BirdSpawnSystem(this, this.rng, loc.id, this.sceneMapSystem);
+    this.dogSystem = new DogFlushSystem(this, this.sceneMapSystem, this.scenePropSystem, this.rng.fork('dog'));
+    this.spawnSystem = new BirdSpawnSystem(this, this.rng, loc.id, this.sceneMapSystem, this.scenePropSystem);
     this.spawnSystem.seedInitialFlocks();
     this.createReticle();
     this.input.setDefaultCursor('none');
@@ -71,34 +76,18 @@ export class HuntScene extends Phaser.Scene {
     this.events.emit('ready');
   }
 
-  private createHabitat(locationId: string) {
+  private createBackground(locationId: string) {
     this.activeSceneArt = sceneArtByLocation.get(locationId) ?? sceneArt[2];
     if (!this.activeSceneArt) return;
     this.background = this.add.image(0, 0, `scene-${this.activeSceneArt.locationId}`).setDepth(0);
-    const texture = `habitat-${this.activeSceneArt.habitatAtlas}`;
-    for (const spec of [...this.activeSceneArt.midground, ...this.activeSceneArt.waterline, ...this.activeSceneArt.foreground]) {
-      const depth = this.activeSceneArt.midground.includes(spec) ? 35 : this.activeSceneArt.waterline.includes(spec) ? 44 : 70;
-      this.habitatProps.push({
-        sprite: this.add.sprite(0, 0, texture, spec.frame).setOrigin(0.5, 1).setDepth(depth),
-        spec,
-        heightScale: this.activeSceneArt.waterline.includes(spec) ? 0.12 : 1,
-      });
-    }
     this.layoutHabitat();
   }
 
   private layoutHabitat() {
     const { width, height } = this.scale;
     if (this.background) this.background.setPosition(width / 2, height / 2).setScale(Math.max(width / 1280, height / 720));
-    const responsiveScale = Phaser.Math.Clamp(height / 720, 0.65, 1.4);
-    for (const { sprite, spec, heightScale } of this.habitatProps) {
-      sprite
-        .setPosition(spec.x * width, spec.y * height)
-        .setScale(spec.scale * responsiveScale, spec.scale * responsiveScale * heightScale)
-        .setAlpha(heightScale < 1 ? 0.72 : 1)
-        .setFlipX(Boolean(spec.flip));
-    }
     this.sceneMapSystem?.resize(width, height);
+    this.scenePropSystem?.resize();
     this.spawnSystem?.resize();
     this.dogSystem?.resize();
   }
@@ -174,6 +163,7 @@ export class HuntScene extends Phaser.Scene {
     this.reticle.y = Phaser.Math.Clamp(this.reticle.y, 30, this.scale.height - 30);
     this.spawnSystem?.update(this.time.now, delta);
     this.dogSystem?.update(this.time.now, delta, this.spawnSystem?.birds ?? []);
+    this.scenePropSystem?.update(this.time.now);
     this.timeLeft -= delta / 1_000;
     if (this.timeLeft <= 0) {
       this.ended = true;

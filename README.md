@@ -80,7 +80,7 @@ Serve the production build over HTTPS (localhost is also allowed by browsers), o
 
 ## Architecture
 
-Phaser renders the responsive pixel-perfect playfield. Accessible DOM screens and overlays handle menus and settings. Pure strict-TypeScript modules under `src/core` own RNG, round plans, scoring, input translation, semantic scene geometry, and save migration; they do not depend on Phaser. Data lives in `src/data`, Web Audio and persistence live behind services, and Vite emits a static offline-capable application. See [architecture](docs/architecture.md), [semantic scene maps](docs/scene-maps.md), [procedural generation](docs/procedural-levels.md), and [input system](docs/input-system.md).
+Phaser renders the responsive pixel-perfect playfield. Accessible DOM screens and overlays handle menus and settings. Pure strict-TypeScript modules under `src/core` own RNG, round plans, scoring, input translation, semantic scene geometry, prop validation/depth resolution, and save migration; they do not depend on Phaser. Data lives in `src/data`, Web Audio and persistence live behind services, and Vite emits a static offline-capable application. See [architecture](docs/architecture.md), [semantic scene maps](docs/scene-maps.md), [scene-map prop placement](docs/scene-props.md), [procedural generation](docs/procedural-levels.md), and [input system](docs/input-system.md).
 
 Bird behavior begins on habitat surfaces rather than off-screen flight lanes. See [bird animation system](docs/bird-animation-system.md) and [species behavior profiles](docs/species-behavior.md).
 

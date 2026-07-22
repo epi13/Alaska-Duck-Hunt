@@ -29,6 +29,8 @@ export class BirdEntity extends Phaser.GameObjects.Sprite {
   private hasReturned = false;
   private readonly returnPlan: BirdPlan;
   private placement: BirdScenePlacement;
+  private environmentalOcclusion = 0;
+  private environmentalDepth?: number;
 
   constructor(scene: Phaser.Scene, plan: BirdPlan, definition: BirdSpriteDefinition, x: number, y: number, protectedBird: boolean, placement: BirdScenePlacement) {
     const variantIndex = Math.max(0, definition.variants.findIndex((variant) => plan.variant === variant));
@@ -51,7 +53,7 @@ export class BirdEntity extends Phaser.GameObjects.Sprite {
 
   get targetable() {
     const visual = this.definition.visuals[this.state];
-    return this.definition.targetableStates.includes(this.state) && isTargetableState(this.state, visual?.occlusion ?? 0);
+    return this.definition.targetableStates.includes(this.state) && isTargetableState(this.state, Math.max(visual?.occlusion ?? 0, this.environmentalOcclusion));
   }
 
   get hitbox() {
@@ -62,6 +64,7 @@ export class BirdEntity extends Phaser.GameObjects.Sprite {
   get sceneDepth() { return this.placement.depth; }
   get normalizedAnchor() { return { x: this.placement.normalizedX, y: this.placement.normalizedY }; }
   get authoredSceneScale() { return this.placement.authoredScale; }
+  get mappedDisplayDepth() { return this.placement.displayDepth; }
   get isSurfaceBound() { return !['takeoff', 'flying', 'distant', 'banking', 'climbing', 'descending', 'landing', 'returning', 'hit', 'falling', 'escaped'].includes(this.state); }
 
   reanchor(x: number, y: number, normalizedX: number, normalizedY: number, scale = this.placement.scale) {
@@ -69,6 +72,12 @@ export class BirdEntity extends Phaser.GameObjects.Sprite {
     this.setPosition(x, y);
     this.placement = { ...this.placement, normalizedX, normalizedY, scale };
     this.applyStateVisual();
+  }
+
+  applyEnvironmentalCover(occlusion: number, depth?: number) {
+    this.environmentalOcclusion = this.isSurfaceBound ? occlusion : 0;
+    this.environmentalDepth = this.isSurfaceBound ? depth : undefined;
+    if (this.environmentalDepth !== undefined) this.setDepth(this.environmentalDepth);
   }
 
   disturb(dogX: number, dogY: number, nowMs: number): boolean {
@@ -154,7 +163,7 @@ export class BirdEntity extends Phaser.GameObjects.Sprite {
     const surfaceBound = this.isSurfaceBound;
     this.setScale(visual.scale * (surfaceBound ? this.placement.scale : 1))
       .setOrigin(...visual.origin)
-      .setDepth(surfaceBound ? this.placement.displayDepth : visual.depth)
+      .setDepth(surfaceBound ? (this.environmentalDepth ?? this.placement.displayDepth) : visual.depth)
       .setSize(...visual.hitbox);
   }
 

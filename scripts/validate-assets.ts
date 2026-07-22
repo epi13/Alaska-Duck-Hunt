@@ -5,6 +5,8 @@ import { birdSprites } from '../src/data/bird-sprites';
 import { species } from '../src/data/content';
 import { sceneMaps } from '../src/data/scene-maps';
 import { validateSceneMap } from '../src/core/scenes/scene-map';
+import { validateScenePropLayout } from '../src/core/scenes/scene-props';
+import { scenePropLayoutByLocation, scenePropLayouts } from '../src/data/scene-props';
 
 const birdIds = birdSprites.map((definition) => definition.speciesId);
 if (new Set(birdIds).size !== birdIds.length || new Set(species.map((entry) => entry.id)).size !== species.length) throw new Error('Species and sprite ids must be unique.');
@@ -98,6 +100,13 @@ if (sceneMaps.map(({ locationId }) => locationId).join(',') !== locationIds.join
 for (const map of sceneMaps) {
   const errors = validateSceneMap(map);
   if (errors.length) throw new Error(`Invalid ${map.locationId} scene map: ${errors.join(' ')}`);
+}
+if (scenePropLayouts.map(({ locationId }) => locationId).join(',') !== locationIds.join(',')) throw new Error('Scene-prop catalog must cover all locations in canonical order.');
+for (const map of sceneMaps) {
+  const layout = scenePropLayoutByLocation.get(map.locationId);
+  if (!layout) throw new Error(`${map.locationId} has no prop layout.`);
+  const invalid = validateScenePropLayout(layout, map).filter(({ valid }) => !valid);
+  if (invalid.length) throw new Error(`Invalid ${map.locationId} prop placements: ${invalid.map(({ placementId, errors }) => `${placementId}: ${errors.join(', ')}`).join('; ')}`);
 }
 
 for (const [path, width, height] of [

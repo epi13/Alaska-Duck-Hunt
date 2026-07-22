@@ -6,12 +6,13 @@ import { profilesForLocation } from '../../data/bird-habitats';
 import { birdSpriteBySpecies } from '../../data/bird-sprites';
 import { BirdEntity } from '../entities/BirdEntity';
 import type { SceneMapSystem } from './SceneMapSystem';
+import type { ScenePropSystem } from './ScenePropSystem';
 
 export class BirdSpawnSystem {
   readonly birds: BirdEntity[] = [];
   private profiles: BirdBehaviorProfile[];
   private lastSpawn = -10_000;
-  constructor(private scene: Phaser.Scene, private rng: SeededRandom, locationId: string, private sceneMap: SceneMapSystem, private cap = 14) {
+  constructor(private scene: Phaser.Scene, private rng: SeededRandom, locationId: string, private sceneMap: SceneMapSystem, private sceneProps: ScenePropSystem, private cap = 14) {
     this.profiles = profilesForLocation(locationId, birdBehaviors);
   }
 
@@ -31,6 +32,11 @@ export class BirdSpawnSystem {
           const world = this.sceneMap.toWorld(projected);
           bird.reanchor(world.x, world.y, projected.x, projected.y);
         }
+        const cover = this.sceneProps.resolveActor(bird.normalizedAnchor, bird.mappedDisplayDepth, 'bird');
+        bird.applyEnvironmentalCover(cover.occlusion, cover.depth);
+        this.scene.events.emit('bird-prop-depth', { speciesId: bird.plan.speciesId, propId: cover.propId, depth: cover.depth, occlusion: cover.occlusion, relation: cover.relation });
+      } else {
+        bird.applyEnvironmentalCover(0);
       }
     }
     for (let index = this.birds.length - 1; index >= 0; index -= 1) if (!this.birds[index]!.active) this.birds.splice(index, 1);
@@ -67,6 +73,8 @@ export class BirdSpawnSystem {
         depth: placement.depth,
         occluded: placement.occluded,
       });
+      const cover = this.sceneProps.resolveActor(placement.point, placement.displayDepth, 'bird');
+      bird.applyEnvironmentalCover(cover.occlusion, cover.depth);
       this.birds.push(bird);
       this.scene.events.emit('bird-spawned', { speciesId: plan.speciesId, illustrated: true, lane: 'habitat', initialState: plan.initialState, surface: plan.surface, spawnZone: placement.regionId, sceneRegionId: placement.regionId, sceneDepth: placement.depth, worldX: placement.worldX, worldY: placement.worldY, occluded: placement.occluded, fallback: false });
     }
@@ -78,6 +86,8 @@ export class BirdSpawnSystem {
       if (!bird.isSurfaceBound) continue;
       const world = this.sceneMap.toWorld(bird.normalizedAnchor);
       bird.reanchor(world.x, world.y, bird.normalizedAnchor.x, bird.normalizedAnchor.y, this.sceneMap.worldObjectScale(bird.authoredSceneScale));
+      const cover = this.sceneProps.resolveActor(bird.normalizedAnchor, bird.mappedDisplayDepth, 'bird');
+      bird.applyEnvironmentalCover(cover.occlusion, cover.depth);
       this.scene.events.emit('scene-map-selected', { sceneRegionId: bird.sceneRegionId, surface: bird.plan.surface, sceneDepth: bird.sceneDepth, worldX: world.x, worldY: world.y });
     }
   }
