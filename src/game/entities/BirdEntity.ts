@@ -1,9 +1,21 @@
 import Phaser from 'phaser';
 import { disturbanceDelay, flightVector, isTargetableState } from '../../core/birds/bird-behavior';
+import { shouldFlipSprite, type FacingDirection } from '../../core/birds/bird-facing';
 import type { BirdPlan } from '../../core/birds/bird-plan';
 import { transitionBirdState, type BirdEvent, type BirdState } from '../../core/birds/bird-state';
 import { frameFor, type BirdSpriteDefinition } from '../../data/bird-sprites';
 import { birdAnimationKey } from '../systems/BirdAnimationSystem';
+
+export interface BirdScenePlacement {
+  readonly regionId: string;
+  readonly normalizedX: number;
+  readonly normalizedY: number;
+  readonly scale: number;
+  readonly authoredScale: number;
+  readonly displayDepth: number;
+  readonly depth: number;
+  readonly occluded: boolean;
+}
 
 export class BirdEntity extends Phaser.GameObjects.Sprite {
   readonly plan: BirdPlan;
@@ -16,8 +28,9 @@ export class BirdEntity extends Phaser.GameObjects.Sprite {
   private resolvedVariant: string;
   private hasReturned = false;
   private readonly returnPlan: BirdPlan;
+  private placement: BirdScenePlacement;
 
-  constructor(scene: Phaser.Scene, plan: BirdPlan, definition: BirdSpriteDefinition, x: number, y: number, protectedBird: boolean) {
+  constructor(scene: Phaser.Scene, plan: BirdPlan, definition: BirdSpriteDefinition, x: number, y: number, protectedBird: boolean, placement: BirdScenePlacement) {
     const variantIndex = Math.max(0, definition.variants.findIndex((variant) => plan.variant === variant));
     const variant = definition.variants[variantIndex] ?? definition.variants[0];
     super(scene, x, y, definition.textureKey, frameFor(definition, variant, poseForState(plan.initialState)));
@@ -25,12 +38,13 @@ export class BirdEntity extends Phaser.GameObjects.Sprite {
     this.returnPlan = { ...plan, flightProfile: 'circlingReturn', direction: plan.direction === 1 ? -1 : 1 };
     this.definition = definition;
     this.protectedBird = protectedBird;
+    this.placement = placement;
     this.resolvedVariant = variant;
     this.state = plan.initialState;
     this.stateSince = scene.time.now;
     scene.add.existing(this);
-    this.setFlipX(plan.direction < 0);
     this.applyStateVisual();
+    this.applyFacing();
     this.playState(this.state);
     scene.events.emit('bird-state', { speciesId: plan.speciesId, from: null, to: this.state, surface: plan.surface });
   }
@@ -42,6 +56,19 @@ export class BirdEntity extends Phaser.GameObjects.Sprite {
 
   get hitbox() {
     return this.definition.visuals[this.state]?.hitbox ?? ([60, 45] as const);
+  }
+
+  get sceneRegionId() { return this.placement.regionId; }
+  get sceneDepth() { return this.placement.depth; }
+  get normalizedAnchor() { return { x: this.placement.normalizedX, y: this.placement.normalizedY }; }
+  get authoredSceneScale() { return this.placement.authoredScale; }
+  get isSurfaceBound() { return !['takeoff', 'flying', 'distant', 'banking', 'climbing', 'descending', 'landing', 'returning', 'hit', 'falling', 'escaped'].includes(this.state); }
+
+  reanchor(x: number, y: number, normalizedX: number, normalizedY: number, scale = this.placement.scale) {
+    if (!this.isSurfaceBound) return;
+    this.setPosition(x, y);
+    this.placement = { ...this.placement, normalizedX, normalizedY, scale };
+    this.applyStateVisual();
   }
 
   disturb(dogX: number, dogY: number, nowMs: number): boolean {
@@ -100,7 +127,7 @@ export class BirdEntity extends Phaser.GameObjects.Sprite {
       this.rotation += this.plan.direction * 2.4 * dt;
       if (this.y > height + 90) this.advance('fall-complete');
     } else if (['walking', 'foraging', 'swimming'].includes(this.state)) {
-      this.x += this.plan.direction * 7 * dt;
+      this.x += this.plan.idleDirection * 7 * dt;
       this.y += Math.sin(nowMs / 520 + this.plan.phase) * 0.08;
     }
 
@@ -117,13 +144,28 @@ export class BirdEntity extends Phaser.GameObjects.Sprite {
     this.state = next;
     this.stateSince = this.scene.time.now;
     this.applyStateVisual();
+    this.applyFacing();
     this.playState(next);
     this.scene.events.emit('bird-state', { speciesId: this.plan.speciesId, from: previous, to: next, surface: this.plan.surface });
   }
 
   private applyStateVisual() {
     const visual = this.definition.visuals[this.state] ?? this.definition.visuals.flying!;
-    this.setScale(visual.scale).setOrigin(...visual.origin).setDepth(visual.depth).setSize(...visual.hitbox);
+    const surfaceBound = this.isSurfaceBound;
+    this.setScale(visual.scale * (surfaceBound ? this.placement.scale : 1))
+      .setOrigin(...visual.origin)
+      .setDepth(surfaceBound ? this.placement.displayDepth : visual.depth)
+      .setSize(...visual.hitbox);
+  }
+
+  private applyFacing() {
+    let direction: FacingDirection = this.plan.idleDirection;
+    if (['preTakeoff', 'takeoff', 'flying', 'distant', 'banking', 'climbing', 'descending', 'landing'].includes(this.state)) {
+      direction = this.plan.direction;
+    } else if (this.state === 'returning') {
+      direction = this.returnPlan.direction;
+    }
+    this.setFlipX(shouldFlipSprite(this.definition.authoredFacing, direction));
   }
 
   private playState(state: BirdState) {

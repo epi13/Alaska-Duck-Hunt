@@ -8,11 +8,13 @@ describe('scene art manifest', () => {
     expect(new Set(sceneArt.map((entry) => entry.background)).size).toBe(locations.length);
   });
 
-  it('provides two playable occlusion planes', () => {
+  it('provides regional props and explicit occlusion planes', () => {
     for (const entry of sceneArt) {
       expect(entry.midground.length).toBeGreaterThanOrEqual(3);
       expect(entry.foreground.length).toBeGreaterThanOrEqual(4);
+      if (!['alpine', 'willow'].includes(entry.locationId)) expect(entry.waterline.length).toBeGreaterThan(0);
       expect(habitatAtlasPaths[entry.habitatAtlas]).toMatch(/\.png$/);
     }
+    expect(new Set(sceneArt.map((entry) => entry.habitatAtlas)).size).toBe(8);
   });
 });

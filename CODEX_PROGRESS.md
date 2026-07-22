@@ -1,8 +1,19 @@
 # Codex Progress
 
-Last updated: 2026-07-20
+Last updated: 2026-07-21
 
 ## Completed work
+
+- Replaced rectangular surface/Y approximations with typed, deterministic semantic scene maps authored against all twelve 1280×720 production plates. Pure geometry supports surface lookup, polygon/path sampling, no-spawn rejection, projection, depth/scale/occlusion metadata, and cover-aware responsive coordinate transforms; Phaser only adapts those results to world coordinates.
+- Anchored water, ground, shoreline, river-edge, rocky-coast, and low-branch birds to mapped visible image features. Surface-bound birds reproject while moving and relayout from normalized anchors after resize; the retriever now follows a location-authored curved/segmented corridor instead of a fixed `0.94 × height` line.
+- Added `?debugSceneMap=1` visualization for semantic regions, depths, paths, samples, no-spawn polygons, occlusion hooks, and the current selection. Added DOM telemetry for region id, depth, selected world position, dog path, and dog world position, plus unit and Playwright coverage across desktop/mobile cover crops.
+- Documented the schema and tracing workflow in `docs/scene-maps.md`; asset validation now validates the checked-in map catalog as well as the twelve source plates.
+
+- Added authored-facing metadata for every bird atlas and a pure facing transform so left- and right-authored sheets both match flight direction. Grounded flock members receive alternating deterministic idle facings, while takeoff, flight, landing, and circling-return states always face their actual motion.
+- Replaced generic Y-coordinate starts with deterministic location-specific water, shore, mudflat, marsh, tundra, snow, forest-floor, rocky-coast, river-edge, and low-branch spawn zones. Species preferences, behavior surfaces, and scene-visible surfaces are intersected before planning; alpine now correctly excludes spruce grouse and supports ptarmigan only.
+- Matched initial animation states to selected surfaces, preventing swimming/diving poses on dry ground and walking/foraging starts in open water.
+- Generated eight original 4×4 regional foreground atlases (128 props total), including four water/shore occluders per atlas; retained keyed sources and prompt records, produced 1024×1024 alpha sheets, and mapped them across all 12 locations.
+- Added a fourth waterline/shore depth plane in front of resting birds, while keeping takeoff and airborne birds above it. Added unit coverage for facing, surface-aware starts, habitat intersection, zone compatibility, atlas diversity, and spawn placement.
 
 - Replaced the flight-only bird runtime with a deterministic surface → dog disturbance → alert/reveal → takeoff → species flight → landing/escape state system. Pure planning, transition, targetability, and vectors live in `src/core/birds`; habitat, behavior, scoring, and atlas definitions stay in `src/data`; Phaser adapters live in `src/game/entities` and `src/game/systems`.
 - Archived the ten superseded 512×512 flight sheets under `assets/references/current-implemented-bird-sheets` with their original layout contract, manifest, repository provenance, and SHA-256 checksums before runtime replacement.
@@ -34,6 +45,12 @@ Last updated: 2026-07-20
 - Diagnosed a second occurrence after the same long-lived terminal relaunched `python -m http.server` as PID 284442. Stopped only that project-local process, restarted Vite on port 8000, added an explicit SVG favicon, and added browser coverage for its successful MIME response.
 
 ## Repair files and validation
+
+- Semantic scene-map validation: `npm install` audited 474 packages with 0 vulnerabilities; `npm run typecheck`, `npm run lint`, `npm test` (28/28), `npm run validate:assets`, `npm run build`, `npm run test:e2e` (9/9 Chromium), and `npm run check` passed. Workbox precaches 81 entries (about 29.8 MB). Playwright visual QA at 1440×900 and 390×844 used `?debugSceneMap=1`, showed aligned polygons/paths and in-bounds bird/dog telemetry after cover-crop resize, and reported no console or page errors. The Browser plugin was unavailable, so repository Playwright was used.
+
+- Regional habitat/facing validation: `npm run check` passed with 23/23 Vitest assertions; `npm run validate:assets` passed for all 16 bird atlases, 12 scene plates, the retriever, three retained legacy habitat sheets, and eight new regional alpha atlases. Development Playwright passed 8/8 and production preview passed 7/7 applicable flows with the development-only MIME assertion skipped.
+- Visual QA used Playwright Chromium because the Browser plugin was unavailable. Desktop captures at 1440×900 covered Copper River, Y–K Delta, Aleutian coast, Southeast rainforest, and winter willow; mobile QA used 390×844. All reported four scene layers, no console/page errors, and zero mobile overflow. A first-pass waterline mismatch was fixed by reducing that plane to a thin 12% vertical scale at 72% opacity.
+- Accepted concept/final fidelity ledger: mountain/sky flight space, braided or coastal water, irregular foreground cover, water birds, dog corridor, and upright crane remain aligned. Regional vegetation now varies by setting; grounded flocks mix idle facings; flight facings follow actual motion. HUD copy and layout are unchanged. The playable runtime still uses smaller target sprites than the illustrative concept so flock density and hit testing remain practical.
 
 - Bird-behavior phase validation: `npm run validate:assets` passed for 16 atlases/JSON maps/previews, 12 scene plates, the retriever, and three habitat atlases. `npm run check` passed with 18/18 Vitest assertions; development Playwright passed 8/8, including explicit touch input and seeded crane reveal-to-flight ordering checks; production Playwright passed 7/7 applicable flows with the development-only MIME check skipped.
 - Browser plugin was not available, so repository Playwright was used as required by the frontend testing skill. Desktop QA at 1440×900 showed water/ground flocks, dog-triggered crane and goose flush telemetry, state-aware target coordinates, and airborne wing cycles. Mobile QA at 390×844 showed 16 illustrated guide cards with no horizontal overflow. No application console/page errors occurred; the only messages were headless Chromium WebGL readback performance warnings during screenshots.
@@ -70,7 +87,7 @@ Last updated: 2026-07-20
 ## Current architecture
 
 - Phaser provides the responsive playfield; accessible DOM overlays provide menus/settings. Pure strict TypeScript modules under `src/core` own deterministic domain logic.
-- Original visual direction: crisp 16-bit-inspired Alaska landscapes, navy/glacial-blue/spruce/lichen/safety-amber palette, clipped-corner HUD panels, and three playable depth planes. Opaque location plates, transparent habitat occluders, and character sheets are mapped in `src/data/scene-art.ts`; Phaser remains the presentation adapter.
+- Original visual direction: crisp 16-bit-inspired Alaska landscapes, navy/glacial-blue/spruce/lichen/safety-amber palette, clipped-corner HUD panels, and four explicit scene-art planes (background, regional midground, waterline/shore occlusion, and foreground) around state-dependent bird/dog depths. Opaque location plates, transparent regional habitat occluders, and character sheets are mapped in `src/data/scene-art.ts`; Phaser remains the presentation adapter.
 
 ## Commands that work
 
@@ -85,7 +102,7 @@ Last updated: 2026-07-20
 
 ## Tests that pass
 
-- Vitest: 18 tests passing across 4 files.
+- Vitest: 23 tests passing across 7 files.
 - Playwright: 8/8 Chromium development flows and 7/7 applicable production-preview flows (one expected development-only MIME test skipped).
 
 ## Known issues

@@ -3,6 +3,8 @@ import { birdBehaviorBySpecies } from '../src/data/bird-behaviors';
 import { birdScoringBySpecies, scoreBird } from '../src/data/bird-scoring';
 import { birdSprites } from '../src/data/bird-sprites';
 import { species } from '../src/data/content';
+import { sceneMaps } from '../src/data/scene-maps';
+import { validateSceneMap } from '../src/core/scenes/scene-map';
 
 const birdIds = birdSprites.map((definition) => definition.speciesId);
 if (new Set(birdIds).size !== birdIds.length || new Set(species.map((entry) => entry.id)).size !== species.length) throw new Error('Species and sprite ids must be unique.');
@@ -92,6 +94,12 @@ for (const id of locationIds) {
   }
 }
 
+if (sceneMaps.map(({ locationId }) => locationId).join(',') !== locationIds.join(',')) throw new Error('Scene-map catalog must cover all locations in canonical order.');
+for (const map of sceneMaps) {
+  const errors = validateSceneMap(map);
+  if (errors.length) throw new Error(`Invalid ${map.locationId} scene map: ${errors.join(' ')}`);
+}
+
 for (const [path, width, height] of [
   ['public/assets/characters/retriever.png', 512, 512],
   ['public/assets/habitat/wetland.png', 1024, 512],
@@ -104,4 +112,23 @@ for (const [path, width, height] of [
   }
 }
 
-console.log(`Required original assets are present: ${birdIds.length} named bird atlases, ${locationIds.length} scene plates, one dog sheet, and three habitat atlases.`);
+const regionalHabitatAtlases = [
+  'southcentral-wetland',
+  'coastal-delta',
+  'western-tundra',
+  'boreal-interior',
+  'southeast-rainforest',
+  'arctic-alpine',
+  'aleutian-coast',
+  'winter-willow',
+];
+for (const id of regionalHabitatAtlases) {
+  const path = `public/assets/habitat/regions/${id}.png`;
+  const png = await readFile(path);
+  const actual = pngSize(png);
+  if (actual.width !== 1024 || actual.height !== 1024 || !pngHasAlpha(png)) {
+    throw new Error(`${path} must be a 1024x1024 alpha PNG.`);
+  }
+}
+
+console.log(`Required original assets are present: ${birdIds.length} named bird atlases, ${locationIds.length} scene plates, one dog sheet, three legacy habitat atlases, and ${regionalHabitatAtlases.length} regional habitat atlases.`);

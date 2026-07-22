@@ -14,6 +14,19 @@ describe('deterministic species behavior', () => {
     expect(flock).toEqual(createFlockPlans(profile, new SeededRandom('same')));
     expect(createFlockPlans(profile, new SeededRandom('same'))).not.toEqual(createFlockPlans(profile, new SeededRandom('different')));
     if (flock.length > 1) expect(flock.some((bird) => bird.formationOffsetX !== 0 || bird.formationOffsetY !== 0)).toBe(true);
+    if (flock.length > 1) expect(new Set(flock.map((bird) => bird.idleDirection)).size).toBe(2);
+  });
+
+  it('matches grounded animation states to the selected surface', () => {
+    const profile = birdBehaviorBySpecies.get('mallard')!;
+    for (let seed = 0; seed < 40; seed += 1) {
+      const plan = createBirdPlan(profile, new SeededRandom(seed));
+      if (['openWater', 'shallowWater'].includes(plan.surface)) {
+        expect(['swimming', 'diving', 'resting', 'alert']).toContain(plan.initialState);
+      } else {
+        expect(['foraging', 'walking', 'concealed', 'resting', 'alert']).toContain(plan.initialState);
+      }
+    }
   });
 
   it('keeps all sixteen profiles habitat-addressable', () => {

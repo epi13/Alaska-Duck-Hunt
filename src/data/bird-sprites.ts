@@ -1,5 +1,6 @@
 import type { BirdState } from '../core/birds/bird-state';
 import type { BirdFamily } from './bird-behaviors';
+import type { AuthoredFacing } from '../core/birds/bird-facing';
 
 export interface BirdAnimationDefinition {
   frames: readonly string[];
@@ -22,6 +23,7 @@ export interface BirdSpriteDefinition {
   atlasPath: string;
   previewPath: string;
   family: BirdFamily;
+  authoredFacing: AuthoredFacing;
   variants: readonly [string, string];
   frameSize: number;
   animations: Readonly<Partial<Record<BirdState, BirdAnimationDefinition>>>;
@@ -72,23 +74,24 @@ function stateVisuals(scale: number, crane = false): BirdSpriteDefinition['visua
 }
 
 const rows = [
-  ['mallard', 'dabbler', ['drake', 'hen'], 0.72], ['pintail', 'dabbler', ['drake', 'hen'], 0.76],
-  ['wigeon', 'dabbler', ['drake', 'hen'], 0.7], ['teal', 'dabbler', ['drake', 'hen'], 0.58],
-  ['scaup', 'diver', ['drake', 'hen'], 0.7], ['eider', 'seaDuck', ['drake', 'hen'], 0.8],
-  ['harlequin', 'seaDuck', ['drake', 'hen'], 0.62], ['goldeneye', 'diver', ['drake', 'hen'], 0.66],
-  ['goose', 'goose', ['adult', 'juvenile'], 0.86], ['canada-goose', 'goose', ['adult', 'small-adult'], 0.9],
-  ['snow-goose', 'goose', ['white', 'blue'], 0.88], ['brant', 'goose', ['adult', 'small-adult'], 0.78],
-  ['crane', 'crane', ['gray-adult', 'rust-stained'], 0.72], ['grouse', 'upland', ['male', 'female'], 0.66],
-  ['ptarmigan', 'upland', ['summer', 'winter'], 0.66], ['spectacled', 'seaDuck', ['drake', 'hen'], 0.74],
-] as const satisfies readonly (readonly [string, BirdFamily, readonly [string, string], number])[];
+  ['mallard', 'dabbler', ['drake', 'hen'], 0.72, 'right'], ['pintail', 'dabbler', ['drake', 'hen'], 0.76, 'left'],
+  ['wigeon', 'dabbler', ['drake', 'hen'], 0.7, 'left'], ['teal', 'dabbler', ['drake', 'hen'], 0.58, 'left'],
+  ['scaup', 'diver', ['drake', 'hen'], 0.7, 'right'], ['eider', 'seaDuck', ['drake', 'hen'], 0.8, 'right'],
+  ['harlequin', 'seaDuck', ['drake', 'hen'], 0.62, 'left'], ['goldeneye', 'diver', ['drake', 'hen'], 0.66, 'right'],
+  ['goose', 'goose', ['adult', 'juvenile'], 0.86, 'right'], ['canada-goose', 'goose', ['adult', 'small-adult'], 0.9, 'left'],
+  ['snow-goose', 'goose', ['white', 'blue'], 0.88, 'left'], ['brant', 'goose', ['adult', 'small-adult'], 0.78, 'left'],
+  ['crane', 'crane', ['gray-adult', 'rust-stained'], 0.72, 'right'], ['grouse', 'upland', ['male', 'female'], 0.66, 'right'],
+  ['ptarmigan', 'upland', ['summer', 'winter'], 0.66, 'right'], ['spectacled', 'seaDuck', ['drake', 'hen'], 0.74, 'right'],
+] as const satisfies readonly (readonly [string, BirdFamily, readonly [string, string], number, AuthoredFacing])[];
 
-export const birdSprites: readonly BirdSpriteDefinition[] = rows.map(([speciesId, family, variants, scale]) => ({
+export const birdSprites: readonly BirdSpriteDefinition[] = rows.map(([speciesId, family, variants, scale, authoredFacing]) => ({
   speciesId,
   textureKey: `bird-${speciesId}-atlas`,
   imagePath: `assets/birds/${speciesId}/atlas.png`,
   atlasPath: `assets/birds/${speciesId}/atlas.json`,
   previewPath: `assets/birds/${speciesId}/preview.png`,
   family,
+  authoredFacing,
   variants,
   frameSize: speciesId === 'crane' ? 192 : 128,
   animations,

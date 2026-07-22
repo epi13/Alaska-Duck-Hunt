@@ -326,7 +326,7 @@ export const birdBehaviors: readonly BirdBehaviorProfile[] = [
     'seaDuck',
     ['drake', 'hen'],
     notes('Marshy tundra pond, sedge island, or coastal water', 'Dabbles in shallow breeding water and dives in marine groups', 'Eider-like water run with tighter group signaling', 'Strong low marine group flight', 'Close groups and seasonal marine flocks', 'Protected identification bird; never awards target points'),
-    { flightProfile: 'heavyMarineFlight', speed: [200, 260], flockSize: [2, 5], alertDurationMs: [420, 820], takeoffStyle: 'longWaterRun' },
+    { surfaces: ['openWater', 'shallowWater', 'marshGrass'], flightProfile: 'heavyMarineFlight', speed: [200, 260], flockSize: [2, 5], alertDurationMs: [420, 820], takeoffStyle: 'longWaterRun' },
   ),
 ];
 

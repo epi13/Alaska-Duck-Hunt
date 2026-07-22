@@ -37,7 +37,7 @@ async function startHunt(page: Page) {
     'data-scene-background',
     'assets/scenes/copper.png',
   );
-  await expect(page.locator('#aim-layer')).toHaveAttribute('data-scene-layers', '3');
+  await expect(page.locator('#aim-layer')).toHaveAttribute('data-scene-layers', '4');
   await expect(page.locator('#aim-layer')).toHaveAttribute('data-dog-layer', 'ground');
 }
 
@@ -76,7 +76,16 @@ test('mouse aims and fires exactly once, pause gates fire, and resume restores i
     'data-last-illustrated-bird',
     /mallard|pintail|wigeon|teal|scaup|eider|harlequin|goldeneye|goose|canada-goose|snow-goose|brant|crane|grouse|ptarmigan|spectacled/,
   );
-  await expect(surface).toHaveAttribute('data-bird-lane', 'ground');
+  await expect(surface).toHaveAttribute('data-bird-lane', 'habitat');
+  await expect(surface).toHaveAttribute('data-bird-spawn-zone', /copper-/);
+  await expect(surface).toHaveAttribute('data-scene-region-id', /copper-/);
+  await expect(surface).toHaveAttribute('data-scene-depth', /0\.[0-9]+/);
+  await expect(surface).toHaveAttribute('data-scene-world-x', /[0-9]+\.[0-9]+/);
+  await expect(surface).toHaveAttribute('data-scene-world-y', /[0-9]+\.[0-9]+/);
+  await expect(surface).toHaveAttribute('data-scene-map-regions', /[1-9][0-9]*/);
+  await expect(surface).toHaveAttribute('data-dog-path-id', 'copper-sedge-patrol');
+  await expect(surface).toHaveAttribute('data-dog-world-x', /[0-9]+\.[0-9]+/);
+  await expect(surface).toHaveAttribute('data-dog-world-y', /[0-9]+\.[0-9]+/);
   await expect(surface).toHaveAttribute('data-bird-surface', /water|ground|grass|shore|mud|river|branch|coast/i);
   await expect.poll(async () => surface.getAttribute('data-dog-flush'), { timeout: 20_000 }).not.toBeNull();
   await expect(surface).toHaveAttribute('data-bird-state', /alert|standingBonus|preTakeoff|takeoff|flying|climbing|descending/);
@@ -155,6 +164,25 @@ test('seeded crane visibly reveals before its bonus window and flight', async ({
   await expect.poll(async () => surface.getAttribute('data-bird-state-history'), { timeout: 10_000 }).toMatch(/crane:revealing.*crane:standingBonus.*crane:preTakeoff.*crane:takeoff.*crane:flying/);
 });
 
+test('scene-map debug overlay and telemetry survive a mobile resize', async ({ page }) => {
+  await page.goto('/?seed=scene-map-qa&debugSceneMap=1');
+  await enterMenu(page);
+  await startHunt(page);
+  const surface = page.locator('#aim-layer');
+  await expect(surface).toHaveAttribute('data-scene-map-debug', 'true');
+  await expect.poll(async () => surface.getAttribute('data-scene-region-id')).toMatch(/^copper-/);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect.poll(async () => Number(await surface.getAttribute('data-dog-world-x'))).toBeGreaterThanOrEqual(0);
+  await expect.poll(async () => Number(await surface.getAttribute('data-dog-world-x'))).toBeLessThanOrEqual(390);
+  await expect.poll(async () => Number(await surface.getAttribute('data-dog-world-y'))).toBeGreaterThan(0);
+  await expect.poll(async () => Number(await surface.getAttribute('data-dog-world-y'))).toBeLessThanOrEqual(844);
+  await expect(surface).toHaveAttribute('data-scene-depth', /0\.[0-9]+/);
+  await expect.poll(async () => Number(await surface.getAttribute('data-scene-world-x'))).toBeGreaterThanOrEqual(0);
+  await expect.poll(async () => Number(await surface.getAttribute('data-scene-world-x'))).toBeLessThanOrEqual(390);
+  await expect.poll(async () => Number(await surface.getAttribute('data-scene-world-y'))).toBeGreaterThan(0);
+  await expect.poll(async () => Number(await surface.getAttribute('data-scene-world-y'))).toBeLessThanOrEqual(844);
+});
+
 test('field guide, manifest, and responsive mobile layout', async ({ page }) => {
   await page.locator('[data-go="guide"]').first().click();
   await expect(page.getByRole('heading', { name: 'FIELD GUIDE' })).toBeVisible();
@@ -169,7 +197,7 @@ test('field guide, manifest, and responsive mobile layout', async ({ page }) => 
   for (const asset of [
     '/assets/scenes/copper.png',
     '/assets/characters/retriever.png',
-    '/assets/habitat/wetland.png',
+    '/assets/habitat/regions/coastal-delta.png',
   ]) {
     const response = await page.request.get(asset);
     expect(response.ok()).toBeTruthy();
