@@ -119,6 +119,28 @@ export function sampleScenePoint(
   const region = rng.pick(regions);
   const point = sampleGeometry(region.geometry, rng, map.noSpawnAreas, query.visibleBounds);
   if (!point) return undefined;
+  return sampledPoint(map, region, point);
+}
+
+export function projectScenePointNear(
+  map: SceneMap,
+  surface: BirdSurface,
+  target: NormalizedPoint,
+  query: SceneMapQuery = {},
+  maxDistance = .14,
+): SampledScenePoint | undefined {
+  const candidates = regionsForSurface(map, surface, query)
+    .map((region) => {
+      const point = projectOntoGeometry(target, region.geometry);
+      return { region, point, distance: Math.hypot(point.x - target.x, point.y - target.y) };
+    })
+    .filter(({ point, distance }) => distance <= maxDistance && isAllowed(point, map.noSpawnAreas, query.visibleBounds))
+    .sort((a, b) => a.distance - b.distance || a.region.id.localeCompare(b.region.id));
+  const selected = candidates[0];
+  return selected ? sampledPoint(map, selected.region, selected.point) : undefined;
+}
+
+function sampledPoint(map: SceneMap, region: SceneRegion, point: NormalizedPoint): SampledScenePoint {
   const depth = interpolate(region.depth, point.y);
   const scale = interpolate(region.objectScale, depth);
   const occlusionAreaIds = map.foregroundOcclusionAreas
@@ -126,7 +148,7 @@ export function sampleScenePoint(
     .map((area) => area.id);
   return {
     regionId: region.id,
-    surface,
+    surface: region.surface,
     point,
     depth,
     displayDepth: region.displayDepth,

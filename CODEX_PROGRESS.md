@@ -4,6 +4,10 @@ Last updated: 2026-07-21
 
 ## Completed work
 
+- Added an explicit species/family/state/surface/contact compatibility model. Initial state and surface are now selected together; grounded flock offsets are reprojected in normalized scene-map space; unsupported members are reduced rather than floated; and no ordinary wave may begin airborne.
+- Authored state-specific feet, belly, waterline, branch-grip, concealed-baseline, and airborne-center contacts in the bird sprite manifest. Surface-bound Phaser sprites align that contact to the mapped point, assert alignment in development, retain their anchor after responsive resize, and report contact telemetry for browser verification.
+- Routed descent and return landings to compatible mapped water, ground, shore, rock, snow, or low-branch anchors. Added all-family deterministic tests, asset validation, six representative Playwright surface-contact screenshots, and `docs/bird-surface-anchoring.md`.
+
 - Replaced shared regional prop-coordinate templates with 96 individually authored, stable placements across all twelve backgrounds. Every plant, rock, log, branch, snow element, and shoreline piece names a compatible semantic scene-map region and carries typed layer, perspective, scale, origin, occlusion, wind, bird-relation, and dog-pass metadata.
 - Moved prop rendering and responsive layout out of `HuntScene` into `ScenePropSystem`. Prop depth now follows layer and perspective; grounded birds combine state and environmental occlusion for targetability, while birds and the dog move naturally behind or in front of nearby mapped cover.
 - Extended `?debugSceneMap=1` with prop anchors, bounds, layer/depth labels, occlusion polygons, invalid-placement diagnostics, and actor/prop depth relationships. Added placement/depth telemetry, pure validation/occlusion tests, six-family Playwright screenshots, and `docs/scene-props.md`.
@@ -108,8 +112,8 @@ Last updated: 2026-07-21
 
 ## Tests that pass
 
-- Vitest: 23 tests passing across 7 files.
-- Playwright: 8/8 Chromium development flows and 7/7 applicable production-preview flows (one expected development-only MIME test skipped).
+- Vitest: 37 tests passing across 9 files.
+- Playwright: 11/11 Chromium development flows, including six semantic surface-contact screenshots and mobile scene-map relayout.
 
 ## Known issues
 
@@ -121,6 +125,6 @@ Last updated: 2026-07-21
 
 - Final Git review, commit, push, and GitHub Pages status check.
 
-## Latest implementation commit hash
+## Latest implementation branch
 
-- `c7fba70673341b4cf568c37f7b43e30dc6465fd4` — feat: add species-aware bird behavior atlases
+- `fix/valid-surface-state-spawning` — semantic surface-state compatibility, sprite contacts, flock reprojection, and mapped landing anchors.

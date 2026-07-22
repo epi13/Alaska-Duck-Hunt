@@ -5,8 +5,9 @@ import type {
   Formation,
 } from '../core/birds/bird-plan';
 import type { BirdState } from '../core/birds/bird-state';
+import type { BirdFamily } from '../core/birds/bird-placement';
+export type { BirdFamily } from '../core/birds/bird-placement';
 
-export type BirdFamily = 'dabbler' | 'diver' | 'seaDuck' | 'goose' | 'crane' | 'upland';
 export type LocomotionSurface = 'water' | 'ground' | 'shoreline' | 'perch';
 
 export interface BirdBehaviorProfile extends BirdPlanProfile {

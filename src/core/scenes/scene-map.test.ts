@@ -8,6 +8,7 @@ import {
   normalizedToWorld,
   pointInPolygon,
   projectOntoGeometry,
+  projectScenePointNear,
   regionsForSurface,
   sampleScenePoint,
   validateSceneMap,
@@ -54,6 +55,13 @@ describe('semantic scene-map geometry', () => {
     );
     expect(projected.x).toBeCloseTo(.5);
     expect(projected.y).toBeCloseTo(.7);
+  });
+
+  it('reprojects normalized flock offsets onto the nearest compatible region', () => {
+    const projected = projectScenePointNear(simpleMap, 'openWater', { x: .86, y: .42 }, {}, .5);
+    expect(projected?.regionId).toBe('test-water');
+    expect(projected?.point).toEqual({ x: .8, y: .5 });
+    expect(projectScenePointNear(simpleMap, 'forestFloor', { x: .5, y: .5 })).toBeUndefined();
   });
 
   it('converts normalized coordinates through desktop, tablet, and mobile cover crops', () => {

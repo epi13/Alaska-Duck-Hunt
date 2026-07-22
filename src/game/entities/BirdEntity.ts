@@ -2,8 +2,9 @@ import Phaser from 'phaser';
 import { disturbanceDelay, flightVector, isTargetableState } from '../../core/birds/bird-behavior';
 import { shouldFlipSprite, type FacingDirection } from '../../core/birds/bird-facing';
 import type { BirdPlan } from '../../core/birds/bird-plan';
+import { assertBirdPlacement, type SpriteContactType } from '../../core/birds/bird-placement';
 import { transitionBirdState, type BirdEvent, type BirdState } from '../../core/birds/bird-state';
-import { frameFor, type BirdSpriteDefinition } from '../../data/bird-sprites';
+import { contactAnchorFor, frameFor, type BirdSpriteDefinition } from '../../data/bird-sprites';
 import { birdAnimationKey } from '../systems/BirdAnimationSystem';
 
 export interface BirdScenePlacement {
@@ -29,6 +30,7 @@ export class BirdEntity extends Phaser.GameObjects.Sprite {
   private hasReturned = false;
   private readonly returnPlan: BirdPlan;
   private placement: BirdScenePlacement;
+  private landingTarget?: BirdScenePlacement & { readonly worldX: number; readonly worldY: number };
   private environmentalOcclusion = 0;
   private environmentalDepth?: number;
 
@@ -66,12 +68,78 @@ export class BirdEntity extends Phaser.GameObjects.Sprite {
   get authoredSceneScale() { return this.placement.authoredScale; }
   get mappedDisplayDepth() { return this.placement.displayDepth; }
   get isSurfaceBound() { return !['takeoff', 'flying', 'distant', 'banking', 'climbing', 'descending', 'landing', 'returning', 'hit', 'falling', 'escaped'].includes(this.state); }
+  get needsLandingAnchor() { return this.state === 'descending' && !this.landingTarget; }
+  get pendingLandingAnchor() {
+    return this.landingTarget
+      ? { x: this.landingTarget.normalizedX, y: this.landingTarget.normalizedY, authoredScale: this.landingTarget.authoredScale }
+      : undefined;
+  }
+  get contactType(): SpriteContactType | undefined {
+    if (!this.isSurfaceBound && !(this.state === 'landing' && this.landingTarget)) return undefined;
+    const contactState = this.state === 'landing' ? 'settled' : this.state;
+    return assertBirdPlacement(this.plan.speciesId, this.definition.family, contactState, this.plan.surface, this.perchId).contact;
+  }
+  private get perchId() { return this.plan.surface === 'lowBranch' ? this.placement.regionId : undefined; }
 
   reanchor(x: number, y: number, normalizedX: number, normalizedY: number, scale = this.placement.scale) {
     if (!this.isSurfaceBound) return;
     this.setPosition(x, y);
     this.placement = { ...this.placement, normalizedX, normalizedY, scale };
     this.applyStateVisual();
+  }
+
+  setLandingTarget(placement: BirdScenePlacement & { readonly worldX: number; readonly worldY: number }) {
+    if (this.state !== 'descending') throw new Error(`Cannot assign a landing anchor while bird is ${this.state}.`);
+    const compatibility = assertBirdPlacement(
+      this.plan.speciesId,
+      this.definition.family,
+      'settled',
+      this.plan.surface,
+      this.plan.surface === 'lowBranch' ? placement.regionId : undefined,
+    );
+    contactAnchorFor(this.definition, 'settled', compatibility.contact);
+    this.landingTarget = placement;
+  }
+
+  relayoutLandingTarget(worldX: number, worldY: number, scale: number) {
+    if (!this.landingTarget) return;
+    this.landingTarget = { ...this.landingTarget, worldX, worldY, scale };
+    if (this.state === 'landing') this.setPosition(worldX, worldY);
+  }
+
+  renderedContactPoint() {
+    const type = this.contactType;
+    if (!type) return undefined;
+    const anchor = contactAnchorFor(this.definition, this.state, type);
+    const renderedX = this.flipX ? 1 - anchor.x : anchor.x;
+    return {
+      x: this.x + (renderedX - this.originX) * this.displayWidth,
+      y: this.y + (anchor.y - this.originY) * this.displayHeight,
+    };
+  }
+
+  assertContactAt(expectedX: number, expectedY: number, tolerance = 2) {
+    const rendered = this.renderedContactPoint();
+    if (!rendered) return;
+    const error = Math.hypot(rendered.x - expectedX, rendered.y - expectedY);
+    if (error > tolerance) throw new Error(`${this.plan.speciesId}/${this.state} contact is ${error.toFixed(2)}px from its scene-map anchor.`);
+  }
+
+  containsHitPoint(x: number, y: number) {
+    const [width, height] = this.hitbox;
+    const { x: centerX, y: centerY } = this.hitCenter;
+    const radiusX = width * Math.abs(this.scaleX) * .5;
+    const radiusY = height * Math.abs(this.scaleY) * .5;
+    const dx = (x - centerX) / radiusX;
+    const dy = (y - centerY) / radiusY;
+    return dx * dx + dy * dy <= 1;
+  }
+
+  get hitCenter() {
+    return {
+      x: this.x + (.5 - this.originX) * this.displayWidth,
+      y: this.y + (.5 - this.originY) * this.displayHeight,
+    };
   }
 
   applyEnvironmentalCover(occlusion: number, depth?: number) {
@@ -117,15 +185,31 @@ export class BirdEntity extends Phaser.GameObjects.Sprite {
     }
 
     const dt = deltaMs / 1_000;
-    if (['flying', 'banking', 'climbing', 'descending', 'returning'].includes(this.state)) {
+    if (this.state === 'descending' && this.landingTarget) {
+      const distance = Phaser.Math.Distance.Between(this.x, this.y, this.landingTarget.worldX, this.landingTarget.worldY);
+      const step = Math.min(distance, Math.max(90, this.plan.speed * .7) * dt);
+      const angle = Phaser.Math.Angle.Between(this.x, this.y, this.landingTarget.worldX, this.landingTarget.worldY);
+      this.x += Math.cos(angle) * step;
+      this.y += Math.sin(angle) * step;
+      this.rotation = Phaser.Math.Angle.RotateTo(this.rotation, angle, 2.2 * dt);
+      if (distance <= 4 || step >= distance) {
+        const target = this.landingTarget;
+        this.placement = target;
+        this.setPosition(target.worldX, target.worldY).setRotation(0);
+        this.advance('land');
+      }
+    } else if (['flying', 'banking', 'climbing', 'descending', 'returning'].includes(this.state)) {
       const flightElapsed = nowMs - this.flightSince;
       const vector = flightVector(this.state === 'returning' ? this.returnPlan : this.plan, flightElapsed);
       this.x += vector.x * dt;
       this.y += vector.y * dt;
       this.rotation = vector.rotation;
-      if (flightElapsed > this.plan.flightDurationMs) {
+      const landingAfter = this.plan.willLand
+        ? Math.min(this.plan.flightDurationMs, Math.max(650, width * .65 / Math.max(1, this.plan.speed) * 1_000))
+        : this.plan.flightDurationMs;
+      if (flightElapsed > landingAfter) {
         if (this.plan.willLand && this.state !== 'descending') this.advance('descend');
-        else if (this.state === 'descending') this.advance('land');
+        else if (this.state === 'descending' && !this.plan.willLand) this.advance('escape');
         else this.advance('escape');
       }
     } else if (this.state === 'takeoff') {
@@ -140,7 +224,8 @@ export class BirdEntity extends Phaser.GameObjects.Sprite {
       this.y += Math.sin(nowMs / 520 + this.plan.phase) * 0.08;
     }
 
-    if (this.state === 'escaped' || this.x < -180 || this.x > width + 180 || this.y < -180) this.destroy();
+    const outsideFlightBounds = this.x < -180 || this.x > width + 180 || this.y < -180;
+    if (this.state === 'escaped' || (outsideFlightBounds && !this.plan.willLand)) this.destroy();
   }
 
   private advance(event: BirdEvent) {
@@ -161,9 +246,19 @@ export class BirdEntity extends Phaser.GameObjects.Sprite {
   private applyStateVisual() {
     const visual = this.definition.visuals[this.state] ?? this.definition.visuals.flying!;
     const surfaceBound = this.isSurfaceBound;
-    this.setScale(visual.scale * (surfaceBound ? this.placement.scale : 1))
-      .setOrigin(...visual.origin)
-      .setDepth(surfaceBound ? (this.environmentalDepth ?? this.placement.displayDepth) : visual.depth)
+    const anchoredLanding = this.state === 'landing' && this.landingTarget !== undefined;
+    const anchored = surfaceBound || anchoredLanding;
+    const origin = anchored
+      ? (() => {
+          const contactState = anchoredLanding ? 'settled' : this.state;
+          const compatibility = assertBirdPlacement(this.plan.speciesId, this.definition.family, contactState, this.plan.surface, this.perchId);
+          const contact = contactAnchorFor(this.definition, this.state, compatibility.contact);
+          return [contact.x, contact.y] as const;
+        })()
+      : visual.origin;
+    this.setScale(visual.scale * (anchored ? this.placement.scale : 1))
+      .setOrigin(...origin)
+      .setDepth(anchored ? (this.environmentalDepth ?? this.placement.displayDepth) : visual.depth)
       .setSize(...visual.hitbox);
   }
 

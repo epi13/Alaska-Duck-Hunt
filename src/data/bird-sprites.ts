@@ -1,6 +1,8 @@
 import type { BirdState } from '../core/birds/bird-state';
 import type { BirdFamily } from './bird-behaviors';
 import type { AuthoredFacing } from '../core/birds/bird-facing';
+import type { SpriteContactType } from '../core/birds/bird-placement';
+import type { NormalizedPoint } from '../core/scenes/scene-map';
 
 export interface BirdAnimationDefinition {
   frames: readonly string[];
@@ -14,6 +16,7 @@ export interface BirdStateVisual {
   hitbox: readonly [number, number];
   occlusion: number;
   depth: number;
+  contacts: Readonly<Partial<Record<SpriteContactType, NormalizedPoint>>>;
 }
 
 export interface BirdSpriteDefinition {
@@ -55,21 +58,31 @@ const animations: BirdSpriteDefinition['animations'] = {
 
 function stateVisuals(scale: number, crane = false): BirdSpriteDefinition['visuals'] {
   const groundScale = crane ? scale * 1.06 : scale;
-  const make = (value: number, hitbox: readonly [number, number], occlusion: number, depth: number): BirdStateVisual => ({ scale: value, origin: [0.5, 0.72], hitbox, occlusion, depth });
+  const contact = {
+    feet: { x: .5, y: crane ? .87 : .79 },
+    belly: { x: .5, y: crane ? .8 : .72 },
+    waterline: { x: .5, y: crane ? .73 : .62 },
+    branchGrip: { x: .5, y: crane ? .84 : .76 },
+    concealedBaseline: { x: .5, y: crane ? .76 : .74 },
+    airborneCenter: { x: .5, y: .5 },
+  } as const satisfies Record<SpriteContactType, NormalizedPoint>;
+  const contacts = (...types: readonly SpriteContactType[]) => Object.fromEntries(types.map((type) => [type, contact[type]])) as BirdStateVisual['contacts'];
+  const surfaceContacts = contacts('feet', 'belly', 'waterline', 'branchGrip');
+  const make = (value: number, hitbox: readonly [number, number], occlusion: number, depth: number, stateContacts: BirdStateVisual['contacts']): BirdStateVisual => ({ scale: value, origin: [0.5, 0.72], hitbox, occlusion, depth, contacts: stateContacts });
   return {
-    concealed: make(groundScale, crane ? [62, 72] : [54, 38], 0.82, 32),
-    resting: make(groundScale, crane ? [70, 112] : [66, 44], 0.12, 42),
-    foraging: make(groundScale, crane ? [82, 104] : [68, 45], 0.18, 42),
-    walking: make(groundScale, crane ? [72, 118] : [62, 48], 0.1, 42),
-    swimming: make(scale, [68, 42], 0.18, 42), diving: make(scale, [58, 48], 0.35, 40),
-    perched: make(scale, [58, 52], 0.2, 45), alert: make(groundScale, crane ? [68, 130] : [62, 54], 0.08, 45),
-    revealing: make(groundScale, [76, 122], 0.55, 44), standingBonus: make(groundScale, [76, 136], 0.03, 46),
-    preTakeoff: make(scale, [70, 58], 0.04, 47), takeoff: make(scale, [76, 70], 0, 50),
-    flying: make(scale, crane ? [98, 65] : [82, 55], 0, 50), distant: make(scale * 0.72, [58, 40], 0, 25),
-    banking: make(scale, [78, 62], 0, 51), climbing: make(scale, [76, 64], 0, 51),
-    descending: make(scale, [76, 60], 0, 49), landing: make(scale, [78, 62], 0.05, 46),
-    settled: make(groundScale, [64, 44], 0.18, 42), returning: make(scale * 0.86, [70, 50], 0, 35),
-    hit: make(scale, [70, 62], 0, 52), falling: make(scale, [64, 68], 0, 52),
+    concealed: make(groundScale, crane ? [62, 72] : [54, 38], 0.82, 32, contacts('concealedBaseline')),
+    resting: make(groundScale, crane ? [70, 112] : [66, 44], 0.12, 42, surfaceContacts),
+    foraging: make(groundScale, crane ? [82, 104] : [68, 45], 0.18, 42, contacts('belly')),
+    walking: make(groundScale, crane ? [72, 118] : [62, 48], 0.1, 42, contacts('feet')),
+    swimming: make(scale, [68, 42], 0.18, 42, contacts('waterline')), diving: make(scale, [58, 48], 0.35, 40, contacts('waterline')),
+    perched: make(scale, [58, 52], 0.2, 45, contacts('branchGrip')), alert: make(groundScale, crane ? [68, 130] : [62, 54], 0.08, 45, surfaceContacts),
+    revealing: make(groundScale, [76, 122], 0.55, 44, contacts('concealedBaseline')), standingBonus: make(groundScale, [76, 136], 0.03, 46, contacts('feet')),
+    preTakeoff: make(scale, [70, 58], 0.04, 47, surfaceContacts), takeoff: make(scale, [76, 70], 0, 50, contacts('airborneCenter')),
+    flying: make(scale, crane ? [98, 65] : [82, 55], 0, 50, contacts('airborneCenter')), distant: make(scale * 0.72, [58, 40], 0, 25, contacts('airborneCenter')),
+    banking: make(scale, [78, 62], 0, 51, contacts('airborneCenter')), climbing: make(scale, [76, 64], 0, 51, contacts('airborneCenter')),
+    descending: make(scale, [76, 60], 0, 49, contacts('airborneCenter')), landing: make(scale, [78, 62], 0.05, 46, surfaceContacts),
+    settled: make(groundScale, [64, 44], 0.18, 42, surfaceContacts), returning: make(scale * 0.86, [70, 50], 0, 35, contacts('airborneCenter')),
+    hit: make(scale, [70, 62], 0, 52, contacts('airborneCenter')), falling: make(scale, [64, 68], 0, 52, contacts('airborneCenter')),
   };
 }
 
@@ -104,4 +117,10 @@ export const birdSpriteBySpecies = new Map(birdSprites.map((definition) => [defi
 export function frameFor(definition: BirdSpriteDefinition, variant: string, pose: string): string {
   const atlasVariant = definition.variants.includes(variant as never) ? variant : definition.variants[0];
   return `${atlasVariant}/${pose}/0`;
+}
+
+export function contactAnchorFor(definition: BirdSpriteDefinition, state: BirdState, type: SpriteContactType): NormalizedPoint {
+  const anchor = definition.visuals[state]?.contacts[type];
+  if (!anchor) throw new Error(`${definition.speciesId}/${state} is missing ${type} contact anchor.`);
+  return anchor;
 }

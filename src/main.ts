@@ -161,7 +161,9 @@ function startHunt() {
           speciesId,
           illustrated,
           lane,
+          initialState,
           surface,
+          contactType,
           spawnZone,
           sceneRegionId,
           sceneDepth,
@@ -171,7 +173,9 @@ function startHunt() {
           speciesId: string;
           illustrated: boolean;
           lane: string;
+          initialState: string;
           surface: string;
+          contactType: string;
           spawnZone: string;
           sceneRegionId: string;
           sceneDepth: number;
@@ -180,7 +184,9 @@ function startHunt() {
         }) => {
           aimLayer?.setAttribute('data-last-bird', speciesId);
           aimLayer?.setAttribute('data-bird-lane', lane);
+          aimLayer?.setAttribute('data-bird-initial-state', initialState);
           aimLayer?.setAttribute('data-bird-surface', surface);
+          aimLayer?.setAttribute('data-bird-contact-type', contactType);
           aimLayer?.setAttribute('data-bird-spawn-zone', spawnZone);
           aimLayer?.setAttribute('data-scene-region-id', sceneRegionId);
           aimLayer?.setAttribute('data-scene-depth', sceneDepth.toFixed(3));
@@ -191,6 +197,34 @@ function startHunt() {
             aimLayer.dataset.spriteBirds = String(count);
             aimLayer.dataset.lastIllustratedBird = speciesId;
           }
+        },
+      );
+      scene.events.on(
+        'bird-surface-contact',
+        ({ speciesId, state, surface, contactType, sceneRegionId, sceneDepth, worldX, worldY, renderedContactX, renderedContactY, contactError }: {
+          speciesId: string;
+          state: string;
+          surface: string;
+          contactType: string;
+          sceneRegionId: string;
+          sceneDepth: number;
+          worldX: number;
+          worldY: number;
+          renderedContactX: number;
+          renderedContactY: number;
+          contactError: number;
+        }) => {
+          aimLayer?.setAttribute('data-contact-species', speciesId);
+          aimLayer?.setAttribute('data-contact-state', state);
+          aimLayer?.setAttribute('data-bird-surface', surface);
+          aimLayer?.setAttribute('data-bird-contact-type', contactType);
+          aimLayer?.setAttribute('data-scene-region-id', sceneRegionId);
+          aimLayer?.setAttribute('data-scene-depth', sceneDepth.toFixed(3));
+          aimLayer?.setAttribute('data-scene-world-x', worldX.toFixed(2));
+          aimLayer?.setAttribute('data-scene-world-y', worldY.toFixed(2));
+          aimLayer?.setAttribute('data-contact-world-x', renderedContactX.toFixed(2));
+          aimLayer?.setAttribute('data-contact-world-y', renderedContactY.toFixed(2));
+          aimLayer?.setAttribute('data-contact-error', contactError.toFixed(3));
         },
       );
       scene.events.on(

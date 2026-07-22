@@ -6,6 +6,7 @@ import {
   createCoverTransform,
   normalizedToWorld,
   projectOntoGeometry,
+  projectScenePointNear,
   regionsForSurface,
   sampleScenePoint,
   worldToNormalized,
@@ -69,6 +70,15 @@ export class SceneMapSystem {
   sample(surface: BirdSurface, rng: SeededRandom, query: SceneMapQuery = {}): WorldScenePoint | undefined {
     const sampled = sampleScenePoint(this.map, surface, rng, { ...query, visibleBounds: this.visibleBounds() });
     if (!sampled) return undefined;
+    return this.recordWorldPoint(sampled);
+  }
+
+  projectNear(surface: BirdSurface, target: NormalizedPoint, query: SceneMapQuery = {}, maxDistance = .14): WorldScenePoint | undefined {
+    const sampled = projectScenePointNear(this.map, surface, target, { ...query, visibleBounds: this.visibleBounds() }, maxDistance);
+    return sampled ? this.recordWorldPoint(sampled) : undefined;
+  }
+
+  private recordWorldPoint(sampled: SampledScenePoint): WorldScenePoint {
     const world = this.toWorld(sampled.point);
     const result: WorldScenePoint = {
       ...sampled,

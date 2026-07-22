@@ -1,7 +1,8 @@
 import { access, readFile, readdir } from 'node:fs/promises';
 import { birdBehaviorBySpecies } from '../src/data/bird-behaviors';
+import { birdPlacementCompatibility } from '../src/core/birds/bird-placement';
 import { birdScoringBySpecies, scoreBird } from '../src/data/bird-scoring';
-import { birdSprites } from '../src/data/bird-sprites';
+import { birdSprites, contactAnchorFor } from '../src/data/bird-sprites';
 import { species } from '../src/data/content';
 import { sceneMaps } from '../src/data/scene-maps';
 import { validateSceneMap } from '../src/core/scenes/scene-map';
@@ -70,6 +71,22 @@ for (const id of birdIds) {
 
   const behavior = birdBehaviorBySpecies.get(id);
   if (!behavior) throw new Error(`${id} has no behavior profile.`);
+  const compatibleStarts = behavior.surfaces.flatMap((surface) => behavior.initialStates.map((state) => ({
+    surface,
+    state,
+    compatibility: birdPlacementCompatibility(id, behavior.family, state, surface),
+  }))).filter(({ compatibility }) => compatibility.compatible);
+  if (!compatibleStarts.length) throw new Error(`${id} has no compatible surface-state starts.`);
+  for (const { state, compatibility } of compatibleStarts) {
+    const anchor = contactAnchorFor(definition, state, compatibility.contact);
+    if (![anchor.x, anchor.y].every((coordinate) => Number.isFinite(coordinate) && coordinate >= 0 && coordinate <= 1)) {
+      throw new Error(`${id}/${state} has an invalid ${compatibility.contact} contact anchor.`);
+    }
+  }
+  for (const surface of behavior.surfaces) {
+    const settled = birdPlacementCompatibility(id, behavior.family, 'settled', surface);
+    if (settled.compatible) contactAnchorFor(definition, 'settled', settled.contact);
+  }
   const waterFamily = ['dabbler', 'diver', 'seaDuck', 'goose'].includes(behavior.family);
   if (waterFamily && !behavior.surfaces.some((surface) => ['openWater', 'shallowWater', 'mudflat', 'shoreline', 'rockyCoast', 'riverEdge', 'marshGrass'].includes(surface))) throw new Error(`${id} lacks an appropriate water/shoreline start surface.`);
 }

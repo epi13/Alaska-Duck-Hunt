@@ -163,7 +163,7 @@ test('state-aware target hit uses an illustrated atlas bird', async ({ page }) =
 });
 
 test('seeded crane visibly reveals before its bonus window and flight', async ({ page }) => {
-  await page.goto('/?seed=final-qa');
+  await page.goto('/?seed=final-qa&debugBirdSpecies=crane&debugBirdSurface=tallGrass&debugBirdState=concealed');
   await enterMenu(page);
   await startHunt(page);
   const surface = page.locator('#aim-layer');
@@ -214,6 +214,46 @@ test('captures distinct scene-map prop compositions across six habitat families'
     await expect(surface).toHaveAttribute('data-scene-prop-count', /[8-9]|[1-9][0-9]+/);
     await expect.poll(async () => surface.getAttribute('data-scene-region-id')).toMatch(new RegExp(`^${representative.id}-`));
     await page.screenshot({ path: testInfo.outputPath(`${representative.family}-${representative.id}.png`) });
+  }
+});
+
+test('anchors water, ground, snow, rock, branch, and tall-grass starts to semantic contacts', async ({ page }, testInfo) => {
+  test.setTimeout(120_000);
+  const cases = [
+    { name: 'water', location: 1, id: 'cook', species: 'harlequin', surface: 'openWater', state: 'swimming', contact: 'waterline' },
+    { name: 'ground', location: 4, id: 'interior', species: 'grouse', surface: 'forestFloor', state: 'walking', contact: 'feet' },
+    { name: 'snow', location: 10, id: 'willow', species: 'ptarmigan', surface: 'snowGround', state: 'foraging', contact: 'belly' },
+    { name: 'rock', location: 6, id: 'aleutian', species: 'harlequin', surface: 'rockyCoast', state: 'resting', contact: 'belly' },
+    { name: 'branch', location: 4, id: 'interior', species: 'grouse', surface: 'lowBranch', state: 'perched', contact: 'branchGrip' },
+    { name: 'tall-grass', location: 0, id: 'matsu', species: 'crane', surface: 'tallGrass', state: 'concealed', contact: 'concealedBaseline' },
+  ];
+  for (const scenario of cases) {
+    const query = new URLSearchParams({
+      seed: `surface-${scenario.name}`,
+      debugSceneMap: '1',
+      debugBirdSpecies: scenario.species,
+      debugBirdSurface: scenario.surface,
+      debugBirdState: scenario.state,
+    });
+    await page.goto(`/?${query}`);
+    await enterMenu(page);
+    await startHunt(page, scenario.location);
+    const surface = page.locator('#aim-layer');
+    await expect(surface).toHaveAttribute('data-contact-species', scenario.species);
+    await expect(surface).toHaveAttribute('data-contact-state', scenario.state);
+    await expect(surface).toHaveAttribute('data-bird-surface', scenario.surface);
+    await expect(surface).toHaveAttribute('data-bird-contact-type', scenario.contact);
+    await expect(surface).toHaveAttribute('data-scene-region-id', new RegExp(`^${scenario.id}-`));
+    await expect(surface).toHaveAttribute('data-scene-depth', /0\.[0-9]+/);
+    await expect(surface).toHaveAttribute('data-contact-error', '0.000');
+    if (scenario.name === 'snow') {
+      await page.setViewportSize({ width: 390, height: 844 });
+      await expect(surface).toHaveAttribute('data-contact-error', '0.000');
+      await expect.poll(async () => Number(await surface.getAttribute('data-contact-world-x'))).toBeGreaterThanOrEqual(0);
+      await expect.poll(async () => Number(await surface.getAttribute('data-contact-world-x'))).toBeLessThanOrEqual(390);
+      await page.setViewportSize({ width: 1280, height: 720 });
+    }
+    await page.screenshot({ path: testInfo.outputPath(`surface-contact-${scenario.name}.png`) });
   }
 });
 
