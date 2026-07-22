@@ -3,6 +3,8 @@ import { HuntScene } from './game/HuntScene';
 import { LEGAL_DISCLAIMER, locations, modes, species, type GameMode } from './data/content';
 import { birdSpriteBySpecies } from './data/bird-sprites';
 import { birdBehaviorBySpecies } from './data/bird-behaviors';
+import { sceneMapByLocation } from './data/scene-maps';
+import { scenePropLayoutByLocation } from './data/scene-props';
 import { AudioManager } from './services/audio';
 import { BrowserInputProvider, type InputEvent } from './core/input';
 import './styles/main.css';
@@ -91,7 +93,9 @@ function startHunt() {
   game = undefined;
   const locationIndex = Number(sessionStorage.getItem('location') ?? 2);
   const selectedLocation = locations[locationIndex] ?? locations[2]!;
-  root.innerHTML = `<div id="game"></div><div id="aim-layer" aria-label="Hunt aiming surface" data-shots="0" data-sprite-birds="0" data-scene-layers="3" data-dog-layer="ground" data-location-id="${selectedLocation.id}" data-scene-background="assets/scenes/${selectedLocation.id}.png"></div><div class="hud"><div><small>SCORE</small><b id="score">000000</b><span id="combo">COMBO ×0</span></div><div class="objective">PINTAIL • FIELD ROUND</div><div><small>TIME</small><b id="time">01:00</b></div></div><div class="ammo"><small>SHELLS</small><b id="ammo">●●●●●</b><span>R RELOAD</span></div><div id="notice" aria-live="polite"></div><div id="pause" class="overlay hidden"><h2>HUNT PAUSED</h2><button id="resume">RESUME</button><button id="quit">RETURN TO MENU</button></div>`;
+  const selectedSceneMap = sceneMapByLocation.get(selectedLocation.id);
+  const selectedPropLayout = scenePropLayoutByLocation.get(selectedLocation.id);
+  root.innerHTML = `<div id="game"></div><div id="aim-layer" aria-label="Hunt aiming surface" data-shots="0" data-sprite-birds="0" data-scene-layers="4" data-dog-layer="ground" data-location-id="${selectedLocation.id}" data-scene-background="assets/scenes/${selectedLocation.id}.png" data-scene-map-regions="${selectedSceneMap?.regions.length ?? 0}" data-scene-prop-count="${selectedPropLayout?.placements.length ?? 0}" data-scene-prop-invalid="0" data-dog-path-ids="${selectedSceneMap?.dogPatrolPaths.map(({ id }) => id).join(',') ?? ''}" data-scene-map-debug="${new URLSearchParams(location.search).get('debugSceneMap') === '1'}"></div><div class="hud"><div><small>SCORE</small><b id="score">000000</b><span id="combo">COMBO ×0</span></div><div class="objective">PINTAIL • FIELD ROUND</div><div><small>TIME</small><b id="time">01:00</b></div></div><div class="ammo"><small>SHELLS</small><b id="ammo">●●●●●</b><span>R RELOAD</span></div><div id="notice" aria-live="polite"></div><div id="pause" class="overlay hidden"><h2>HUNT PAUSED</h2><button id="resume">RESUME</button><button id="quit">RETURN TO MENU</button></div>`;
   const scene = new HuntScene(locationIndex);
   game = new Phaser.Game({
     type: Phaser.AUTO,
@@ -157,18 +161,123 @@ function startHunt() {
           speciesId,
           illustrated,
           lane,
+          initialState,
+          surface,
+          contactType,
+          spawnZone,
+          sceneRegionId,
+          sceneDepth,
+          worldX,
+          worldY,
         }: {
           speciesId: string;
           illustrated: boolean;
           lane: string;
+          initialState: string;
+          surface: string;
+          contactType: string;
+          spawnZone: string;
+          sceneRegionId: string;
+          sceneDepth: number;
+          worldX: number;
+          worldY: number;
         }) => {
           aimLayer?.setAttribute('data-last-bird', speciesId);
           aimLayer?.setAttribute('data-bird-lane', lane);
+          aimLayer?.setAttribute('data-bird-initial-state', initialState);
+          aimLayer?.setAttribute('data-bird-surface', surface);
+          aimLayer?.setAttribute('data-bird-contact-type', contactType);
+          aimLayer?.setAttribute('data-bird-spawn-zone', spawnZone);
+          aimLayer?.setAttribute('data-scene-region-id', sceneRegionId);
+          aimLayer?.setAttribute('data-scene-depth', sceneDepth.toFixed(3));
+          aimLayer?.setAttribute('data-scene-world-x', worldX.toFixed(2));
+          aimLayer?.setAttribute('data-scene-world-y', worldY.toFixed(2));
           if (illustrated && aimLayer) {
             const count = Number(aimLayer.dataset.spriteBirds ?? 0) + 1;
             aimLayer.dataset.spriteBirds = String(count);
             aimLayer.dataset.lastIllustratedBird = speciesId;
           }
+        },
+      );
+      scene.events.on(
+        'bird-surface-contact',
+        ({ speciesId, state, surface, contactType, sceneRegionId, sceneDepth, worldX, worldY, renderedContactX, renderedContactY, contactError }: {
+          speciesId: string;
+          state: string;
+          surface: string;
+          contactType: string;
+          sceneRegionId: string;
+          sceneDepth: number;
+          worldX: number;
+          worldY: number;
+          renderedContactX: number;
+          renderedContactY: number;
+          contactError: number;
+        }) => {
+          aimLayer?.setAttribute('data-contact-species', speciesId);
+          aimLayer?.setAttribute('data-contact-state', state);
+          aimLayer?.setAttribute('data-bird-surface', surface);
+          aimLayer?.setAttribute('data-bird-contact-type', contactType);
+          aimLayer?.setAttribute('data-scene-region-id', sceneRegionId);
+          aimLayer?.setAttribute('data-scene-depth', sceneDepth.toFixed(3));
+          aimLayer?.setAttribute('data-scene-world-x', worldX.toFixed(2));
+          aimLayer?.setAttribute('data-scene-world-y', worldY.toFixed(2));
+          aimLayer?.setAttribute('data-contact-world-x', renderedContactX.toFixed(2));
+          aimLayer?.setAttribute('data-contact-world-y', renderedContactY.toFixed(2));
+          aimLayer?.setAttribute('data-contact-error', contactError.toFixed(3));
+        },
+      );
+      scene.events.on(
+        'scene-prop-position',
+        ({ id, worldX, worldY, depth }: { id: string; worldX: number; worldY: number; depth: number }) => {
+          aimLayer?.setAttribute('data-scene-prop-id', id);
+          aimLayer?.setAttribute('data-scene-prop-world-x', worldX.toFixed(2));
+          aimLayer?.setAttribute('data-scene-prop-world-y', worldY.toFixed(2));
+          aimLayer?.setAttribute('data-scene-prop-depth', depth.toFixed(2));
+        },
+      );
+      scene.events.on(
+        'scene-props-ready',
+        ({ count, invalidCount }: { count: number; invalidCount: number }) => {
+          aimLayer?.setAttribute('data-scene-prop-count', String(count));
+          aimLayer?.setAttribute('data-scene-prop-invalid', String(invalidCount));
+        },
+      );
+      scene.events.on(
+        'bird-prop-depth',
+        ({ propId, depth, occlusion, relation }: { propId?: string; depth: number; occlusion: number; relation: string }) => {
+          aimLayer?.setAttribute('data-bird-prop-id', propId ?? 'none');
+          aimLayer?.setAttribute('data-bird-display-depth', depth.toFixed(2));
+          aimLayer?.setAttribute('data-bird-prop-occlusion', occlusion.toFixed(2));
+          aimLayer?.setAttribute('data-bird-prop-relation', relation);
+        },
+      );
+      scene.events.on(
+        'scene-map-selected',
+        ({ sceneRegionId, surface, sceneDepth, worldX, worldY }: { sceneRegionId: string; surface: string; sceneDepth: number; worldX: number; worldY: number }) => {
+          aimLayer?.setAttribute('data-scene-region-id', sceneRegionId);
+          aimLayer?.setAttribute('data-bird-surface', surface);
+          aimLayer?.setAttribute('data-scene-depth', sceneDepth.toFixed(3));
+          aimLayer?.setAttribute('data-scene-world-x', worldX.toFixed(2));
+          aimLayer?.setAttribute('data-scene-world-y', worldY.toFixed(2));
+        },
+      );
+      scene.events.on(
+        'scene-map-ready',
+        ({ regionCount, dogPathIds }: { regionCount: number; dogPathIds: string[] }) => {
+          aimLayer?.setAttribute('data-scene-map-regions', String(regionCount));
+          aimLayer?.setAttribute('data-dog-path-ids', dogPathIds.join(','));
+        },
+      );
+      scene.events.on(
+        'dog-map-position',
+        ({ pathId, worldX, worldY, depth, propId, relation }: { pathId: string; worldX: number; worldY: number; depth: number; propId?: string; relation: string }) => {
+          aimLayer?.setAttribute('data-dog-path-id', pathId);
+          aimLayer?.setAttribute('data-dog-world-x', worldX.toFixed(2));
+          aimLayer?.setAttribute('data-dog-world-y', worldY.toFixed(2));
+          aimLayer?.setAttribute('data-dog-display-depth', depth.toFixed(2));
+          aimLayer?.setAttribute('data-dog-prop-id', propId ?? 'none');
+          aimLayer?.setAttribute('data-dog-prop-relation', relation);
         },
       );
       scene.events.on(

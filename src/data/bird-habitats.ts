@@ -1,5 +1,6 @@
 import type { BirdSurface } from '../core/birds/bird-plan';
 import type { BirdBehaviorProfile } from './bird-behaviors';
+import { sceneMapByLocation } from './scene-maps';
 
 export interface BirdHabitatAffinity {
   speciesId: string;
@@ -21,7 +22,7 @@ export const birdHabitats: readonly BirdHabitatAffinity[] = [
   { speciesId: 'snow-goose', locations: ['copper', 'yk', 'arctic', 'tundra', 'river'], preferredSurfaces: ['tundraGround', 'marshGrass', 'mudflat'] },
   { speciesId: 'brant', locations: ['cook', 'yk', 'arctic', 'aleutian'], preferredSurfaces: ['shoreline', 'mudflat', 'shallowWater'] },
   { speciesId: 'crane', locations: ['matsu', 'copper', 'yk', 'interior', 'tundra', 'river'], preferredSurfaces: ['tallGrass', 'marshGrass', 'tundraGround'] },
-  { speciesId: 'grouse', locations: ['matsu', 'interior', 'southeast', 'alpine', 'willow'], preferredSurfaces: ['forestFloor', 'lowBranch'] },
+  { speciesId: 'grouse', locations: ['matsu', 'interior', 'southeast', 'willow'], preferredSurfaces: ['forestFloor', 'lowBranch'] },
   { speciesId: 'ptarmigan', locations: ['matsu', 'interior', 'arctic', 'tundra', 'alpine', 'willow'], preferredSurfaces: ['tundraGround', 'snowGround', 'marshGrass'] },
   { speciesId: 'spectacled', locations: ['yk', 'arctic', 'tundra'], preferredSurfaces: ['shallowWater', 'marshGrass', 'openWater'] },
 ];
@@ -34,7 +35,15 @@ export function profilesForLocation<T extends BirdBehaviorProfile>(
   locationId: string,
   profiles: readonly T[],
 ): T[] {
-  return profiles.filter((profile) =>
-    birdHabitatBySpecies.get(profile.speciesId)?.locations.includes(locationId),
-  );
+  return profiles.flatMap((profile) => {
+    const habitat = birdHabitatBySpecies.get(profile.speciesId);
+    if (!habitat?.locations.includes(locationId)) return [];
+    const visibleSurfaces = new Set(
+      (sceneMapByLocation.get(locationId)?.regions ?? []).map((region) => region.surface),
+    );
+    const surfaces = profile.surfaces.filter((surface) =>
+      habitat.preferredSurfaces.includes(surface) && visibleSurfaces.has(surface),
+    );
+    return surfaces.length ? [{ ...profile, surfaces } as T] : [];
+  });
 }

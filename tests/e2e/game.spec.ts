@@ -25,19 +25,21 @@ async function enterMenu(page: Page) {
   if (await enter.isVisible().catch(() => false)) await enter.click();
 }
 
-async function startHunt(page: Page) {
-  await page.locator('[data-go="campaign"]').first().click();
-  await page.locator('[data-location="2"]').click();
+async function startHunt(page: Page, locationIndex = 2) {
+  await page.evaluate((index) => sessionStorage.setItem('location', String(index)), locationIndex);
+  await page.locator('[data-go="modes"]').first().click();
+  await page.locator('#brief').click();
   await page.locator('#start-hunt').click();
   await expect(page.locator('canvas')).toBeVisible();
   await expect(page.locator('#aim-layer')).toHaveAttribute('data-shots', '0');
   await expect(page.locator('#aim-layer')).toHaveAttribute('data-sprite-birds', '0');
-  await expect(page.locator('#aim-layer')).toHaveAttribute('data-location-id', 'copper');
+  const locationId = ['matsu', 'cook', 'copper', 'yk', 'interior', 'arctic', 'aleutian', 'southeast', 'tundra', 'alpine', 'willow', 'river'][locationIndex];
+  await expect(page.locator('#aim-layer')).toHaveAttribute('data-location-id', locationId ?? 'copper');
   await expect(page.locator('#aim-layer')).toHaveAttribute(
     'data-scene-background',
-    'assets/scenes/copper.png',
+    `assets/scenes/${locationId ?? 'copper'}.png`,
   );
-  await expect(page.locator('#aim-layer')).toHaveAttribute('data-scene-layers', '3');
+  await expect(page.locator('#aim-layer')).toHaveAttribute('data-scene-layers', '4');
   await expect(page.locator('#aim-layer')).toHaveAttribute('data-dog-layer', 'ground');
 }
 
@@ -76,7 +78,21 @@ test('mouse aims and fires exactly once, pause gates fire, and resume restores i
     'data-last-illustrated-bird',
     /mallard|pintail|wigeon|teal|scaup|eider|harlequin|goldeneye|goose|canada-goose|snow-goose|brant|crane|grouse|ptarmigan|spectacled/,
   );
-  await expect(surface).toHaveAttribute('data-bird-lane', 'ground');
+  await expect(surface).toHaveAttribute('data-bird-lane', 'habitat');
+  await expect(surface).toHaveAttribute('data-bird-spawn-zone', /copper-/);
+  await expect(surface).toHaveAttribute('data-scene-region-id', /copper-/);
+  await expect(surface).toHaveAttribute('data-scene-depth', /0\.[0-9]+/);
+  await expect(surface).toHaveAttribute('data-scene-world-x', /[0-9]+\.[0-9]+/);
+  await expect(surface).toHaveAttribute('data-scene-world-y', /[0-9]+\.[0-9]+/);
+  await expect(surface).toHaveAttribute('data-scene-map-regions', /[1-9][0-9]*/);
+  await expect(surface).toHaveAttribute('data-scene-prop-count', /[8-9]|[1-9][0-9]+/);
+  await expect(surface).toHaveAttribute('data-scene-prop-invalid', '0');
+  await expect(surface).toHaveAttribute('data-dog-path-id', 'copper-sedge-patrol');
+  await expect(surface).toHaveAttribute('data-dog-world-x', /[0-9]+\.[0-9]+/);
+  await expect(surface).toHaveAttribute('data-dog-world-y', /[0-9]+\.[0-9]+/);
+  await expect(surface).toHaveAttribute('data-dog-display-depth', /[0-9]+\.[0-9]+/);
+  await expect(surface).toHaveAttribute('data-bird-display-depth', /[0-9]+\.[0-9]+/);
+  await expect(surface).toHaveAttribute('data-bird-prop-occlusion', /0\.[0-9]+/);
   await expect(surface).toHaveAttribute('data-bird-surface', /water|ground|grass|shore|mud|river|branch|coast/i);
   await expect.poll(async () => surface.getAttribute('data-dog-flush'), { timeout: 20_000 }).not.toBeNull();
   await expect(surface).toHaveAttribute('data-bird-state', /alert|standingBonus|preTakeoff|takeoff|flying|climbing|descending/);
@@ -147,12 +163,98 @@ test('state-aware target hit uses an illustrated atlas bird', async ({ page }) =
 });
 
 test('seeded crane visibly reveals before its bonus window and flight', async ({ page }) => {
-  await page.goto('/?seed=final-qa');
+  await page.goto('/?seed=final-qa&debugBirdSpecies=crane&debugBirdSurface=tallGrass&debugBirdState=concealed');
   await enterMenu(page);
   await startHunt(page);
   const surface = page.locator('#aim-layer');
   await expect.poll(async () => surface.getAttribute('data-dog-flush'), { timeout: 20_000 }).toBe('crane');
   await expect.poll(async () => surface.getAttribute('data-bird-state-history'), { timeout: 10_000 }).toMatch(/crane:revealing.*crane:standingBonus.*crane:preTakeoff.*crane:takeoff.*crane:flying/);
+});
+
+test('scene-map debug overlay and telemetry survive a mobile resize', async ({ page }, testInfo) => {
+  await page.goto('/?seed=scene-map-qa&debugSceneMap=1');
+  await enterMenu(page);
+  await startHunt(page);
+  const surface = page.locator('#aim-layer');
+  await expect(surface).toHaveAttribute('data-scene-map-debug', 'true');
+  await expect.poll(async () => surface.getAttribute('data-scene-region-id')).toMatch(/^copper-/);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect.poll(async () => Number(await surface.getAttribute('data-dog-world-x'))).toBeGreaterThanOrEqual(0);
+  await expect.poll(async () => Number(await surface.getAttribute('data-dog-world-x'))).toBeLessThanOrEqual(390);
+  await expect.poll(async () => Number(await surface.getAttribute('data-dog-world-y'))).toBeGreaterThan(0);
+  await expect.poll(async () => Number(await surface.getAttribute('data-dog-world-y'))).toBeLessThanOrEqual(844);
+  await expect(surface).toHaveAttribute('data-scene-depth', /0\.[0-9]+/);
+  await expect.poll(async () => Number(await surface.getAttribute('data-scene-world-x'))).toBeGreaterThanOrEqual(0);
+  await expect.poll(async () => Number(await surface.getAttribute('data-scene-world-x'))).toBeLessThanOrEqual(390);
+  await expect.poll(async () => Number(await surface.getAttribute('data-scene-world-y'))).toBeGreaterThan(0);
+  await expect.poll(async () => Number(await surface.getAttribute('data-scene-world-y'))).toBeLessThanOrEqual(844);
+  await expect.poll(async () => Number(await surface.getAttribute('data-scene-prop-world-x'))).toBeGreaterThanOrEqual(0);
+  await expect.poll(async () => Number(await surface.getAttribute('data-scene-prop-world-x'))).toBeLessThanOrEqual(390);
+  await expect.poll(async () => Number(await surface.getAttribute('data-scene-prop-world-y'))).toBeGreaterThan(0);
+  await expect.poll(async () => Number(await surface.getAttribute('data-scene-prop-world-y'))).toBeLessThanOrEqual(844);
+  await page.screenshot({ path: testInfo.outputPath('mobile-scene-map-props-debug.png') });
+});
+
+test('captures distinct scene-map prop compositions across six habitat families', async ({ page }, testInfo) => {
+  test.setTimeout(90_000);
+  const representatives = [
+    { id: 'matsu', index: 0, family: 'wetland' },
+    { id: 'interior', index: 4, family: 'forest' },
+    { id: 'aleutian', index: 6, family: 'coastal' },
+    { id: 'tundra', index: 8, family: 'tundra' },
+    { id: 'alpine', index: 9, family: 'alpine' },
+    { id: 'willow', index: 10, family: 'snow' },
+  ];
+  for (const representative of representatives) {
+    await page.goto(`/?seed=prop-${representative.id}`);
+    await enterMenu(page);
+    await startHunt(page, representative.index);
+    const surface = page.locator('#aim-layer');
+    await expect(surface).toHaveAttribute('data-scene-prop-invalid', '0');
+    await expect(surface).toHaveAttribute('data-scene-prop-count', /[8-9]|[1-9][0-9]+/);
+    await expect.poll(async () => surface.getAttribute('data-scene-region-id')).toMatch(new RegExp(`^${representative.id}-`));
+    await page.screenshot({ path: testInfo.outputPath(`${representative.family}-${representative.id}.png`) });
+  }
+});
+
+test('anchors water, ground, snow, rock, branch, and tall-grass starts to semantic contacts', async ({ page }, testInfo) => {
+  test.setTimeout(120_000);
+  const cases = [
+    { name: 'water', location: 1, id: 'cook', species: 'harlequin', surface: 'openWater', state: 'swimming', contact: 'waterline' },
+    { name: 'ground', location: 4, id: 'interior', species: 'grouse', surface: 'forestFloor', state: 'walking', contact: 'feet' },
+    { name: 'snow', location: 10, id: 'willow', species: 'ptarmigan', surface: 'snowGround', state: 'foraging', contact: 'belly' },
+    { name: 'rock', location: 6, id: 'aleutian', species: 'harlequin', surface: 'rockyCoast', state: 'resting', contact: 'belly' },
+    { name: 'branch', location: 4, id: 'interior', species: 'grouse', surface: 'lowBranch', state: 'perched', contact: 'branchGrip' },
+    { name: 'tall-grass', location: 0, id: 'matsu', species: 'crane', surface: 'tallGrass', state: 'concealed', contact: 'concealedBaseline' },
+  ];
+  for (const scenario of cases) {
+    const query = new URLSearchParams({
+      seed: `surface-${scenario.name}`,
+      debugSceneMap: '1',
+      debugBirdSpecies: scenario.species,
+      debugBirdSurface: scenario.surface,
+      debugBirdState: scenario.state,
+    });
+    await page.goto(`/?${query}`);
+    await enterMenu(page);
+    await startHunt(page, scenario.location);
+    const surface = page.locator('#aim-layer');
+    await expect(surface).toHaveAttribute('data-contact-species', scenario.species);
+    await expect(surface).toHaveAttribute('data-contact-state', scenario.state);
+    await expect(surface).toHaveAttribute('data-bird-surface', scenario.surface);
+    await expect(surface).toHaveAttribute('data-bird-contact-type', scenario.contact);
+    await expect(surface).toHaveAttribute('data-scene-region-id', new RegExp(`^${scenario.id}-`));
+    await expect(surface).toHaveAttribute('data-scene-depth', /0\.[0-9]+/);
+    await expect(surface).toHaveAttribute('data-contact-error', '0.000');
+    if (scenario.name === 'snow') {
+      await page.setViewportSize({ width: 390, height: 844 });
+      await expect(surface).toHaveAttribute('data-contact-error', '0.000');
+      await expect.poll(async () => Number(await surface.getAttribute('data-contact-world-x'))).toBeGreaterThanOrEqual(0);
+      await expect.poll(async () => Number(await surface.getAttribute('data-contact-world-x'))).toBeLessThanOrEqual(390);
+      await page.setViewportSize({ width: 1280, height: 720 });
+    }
+    await page.screenshot({ path: testInfo.outputPath(`surface-contact-${scenario.name}.png`) });
+  }
 });
 
 test('field guide, manifest, and responsive mobile layout', async ({ page }) => {
@@ -169,7 +271,7 @@ test('field guide, manifest, and responsive mobile layout', async ({ page }) => 
   for (const asset of [
     '/assets/scenes/copper.png',
     '/assets/characters/retriever.png',
-    '/assets/habitat/wetland.png',
+    '/assets/habitat/regions/coastal-delta.png',
   ]) {
     const response = await page.request.get(asset);
     expect(response.ok()).toBeTruthy();

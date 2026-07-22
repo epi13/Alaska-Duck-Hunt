@@ -59,7 +59,7 @@ export function transitionBirdState(
     if (!['concealed', 'resting', 'foraging', 'walking', 'swimming', 'diving', 'perched', 'settled'].includes(state)) {
       return state;
     }
-    return rules.revealBeforeFlush ? 'revealing' : 'alert';
+    return rules.revealBeforeFlush && state === 'concealed' ? 'revealing' : 'alert';
   }
   if (event === 'reveal-complete' && state === 'revealing') return 'standingBonus';
   if (event === 'alert-complete' && ['alert', 'standingBonus'].includes(state)) return 'preTakeoff';
@@ -67,7 +67,7 @@ export function transitionBirdState(
   if (event === 'takeoff-complete' && state === 'takeoff') return 'flying';
   if (event === 'bank' && ['flying', 'climbing', 'descending'].includes(state)) return 'banking';
   if (event === 'climb' && ['flying', 'banking'].includes(state)) return 'climbing';
-  if (event === 'descend' && ['flying', 'banking', 'climbing'].includes(state)) return 'descending';
+  if (event === 'descend' && ['flying', 'banking', 'climbing', 'returning'].includes(state)) return 'descending';
   if (event === 'land' && ['flying', 'banking', 'descending', 'returning'].includes(state)) return 'landing';
   if (event === 'settle' && state === 'landing') return 'settled';
   if (event === 'return' && ['flying', 'escaped'].includes(state)) return 'returning';

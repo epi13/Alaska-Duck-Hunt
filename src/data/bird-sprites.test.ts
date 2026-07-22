@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { BIRD_STATES } from '../core/birds/bird-state';
-import { birdSprites, birdSpriteBySpecies } from './bird-sprites';
+import { birdPlacementCompatibility } from '../core/birds/bird-placement';
+import { birdBehaviors } from './bird-behaviors';
+import { birdSprites, birdSpriteBySpecies, contactAnchorFor } from './bird-sprites';
 import { species } from './content';
 
 describe('bird sprite atlas manifest', () => {
@@ -23,5 +25,20 @@ describe('bird sprite atlas manifest', () => {
   it('only refers to typed bird states', () => {
     const valid = new Set(BIRD_STATES);
     for (const sprite of birdSprites) for (const state of Object.keys(sprite.animations)) expect(valid.has(state as never)).toBe(true);
+  });
+
+  it('authors every state-specific contact required by compatible spawn pairs', () => {
+    for (const profile of birdBehaviors) {
+      const sprite = birdSpriteBySpecies.get(profile.speciesId)!;
+      for (const surface of profile.surfaces) for (const state of profile.initialStates) {
+        const compatibility = birdPlacementCompatibility(profile.speciesId, profile.family, state, surface);
+        if (!compatibility.compatible) continue;
+        const anchor = contactAnchorFor(sprite, state, compatibility.contact);
+        expect(anchor.x, `${profile.speciesId}/${state}/${compatibility.contact}`).toBeGreaterThanOrEqual(0);
+        expect(anchor.x).toBeLessThanOrEqual(1);
+        expect(anchor.y).toBeGreaterThanOrEqual(0);
+        expect(anchor.y).toBeLessThanOrEqual(1);
+      }
+    }
   });
 });

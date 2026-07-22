@@ -1,6 +1,6 @@
 # Bird Animation and Behavior System
 
-The hunt starts birds where Alaska birds actually read best: on open or shallow water, mudflat, shoreline, marsh or tundra ground, forest floor, low branch, rocky coast, or river edge. The retriever is the disturbance source. Proximity schedules a deterministic reaction delay, then each bird advances through its species profile instead of appearing already in flight.
+The hunt starts birds where Alaska birds actually read best: on open or shallow water, mudflat, shoreline, marsh or tundra ground, forest floor, low branch, rocky coast, or river edge. Surface and state are selected as one compatible seeded pair, and each state aligns an authored feet, belly, waterline, branch-grip, or concealed-body contact to the semantic scene-map point. Flock offsets are projected in normalized map space and landings resolve a compatible mapped anchor; see [bird surface anchoring](bird-surface-anchoring.md). The retriever is the disturbance source. Proximity schedules a deterministic reaction delay, then each bird advances through its species profile instead of appearing already in flight.
 
 ## State flow
 
