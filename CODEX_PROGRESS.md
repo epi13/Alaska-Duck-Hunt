@@ -211,5 +211,7 @@ Last updated: 2026-07-22
   failure that prevented the Pages artifact from being uploaded.
 - Added explicit Pages configuration and a production artifact gate that
   rejects source `/src/main.ts` references and missing packaged icons.
+- Stabilized hosted contact QA by recording deterministic surface-state history
+  instead of asserting a transient state after a bird has begun takeoff.
 - Documented that repository Pages must use GitHub Actions rather than the
   legacy `main /` source.

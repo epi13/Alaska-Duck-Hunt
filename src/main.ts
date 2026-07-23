@@ -763,6 +763,12 @@ function startHunt() {
         }) => {
           aimLayer?.setAttribute('data-contact-species', speciesId);
           aimLayer?.setAttribute('data-contact-state', state);
+          if (aimLayer) {
+            const signature = `${speciesId}:${surface}:${state}`;
+            const history = aimLayer.dataset.contactStateHistory ?? '';
+            if (!history.endsWith(`>${signature}`))
+              aimLayer.dataset.contactStateHistory = `${history}>${signature}`.slice(-1_500);
+          }
           aimLayer?.setAttribute('data-bird-surface', surface);
           aimLayer?.setAttribute('data-bird-contact-type', contactType);
           aimLayer?.setAttribute('data-scene-region-id', sceneRegionId);

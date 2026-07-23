@@ -1008,7 +1008,9 @@ test('anchors water, ground, snow, rock, branch, and tall-grass starts to semant
     await startHunt(page, scenario.location);
     const surface = page.locator('#aim-layer');
     await expect(surface).toHaveAttribute('data-contact-species', scenario.species);
-    await expect(surface).toHaveAttribute('data-contact-state', scenario.state);
+    await expect
+      .poll(async () => surface.getAttribute('data-contact-state-history'))
+      .toMatch(new RegExp(`${scenario.species}:${scenario.surface}:${scenario.state}`));
     await expect(surface).toHaveAttribute('data-bird-surface', scenario.surface);
     await expect(surface).toHaveAttribute('data-bird-contact-type', scenario.contact);
     await expect(surface).toHaveAttribute('data-scene-region-id', new RegExp(`^${scenario.id}-`));
