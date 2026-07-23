@@ -103,6 +103,18 @@ export class DogFlushSystem {
       this.sprite.anims.timeScale = looping ? this.animationRateMultiplier : 1;
       if (looping && definition.frames.length > 1) this.sprite.anims.setProgress(this.animationPhase);
     }
+    const vocalization = state === 'sniff'
+      ? 'sniff'
+      : state === 'alert' || state === 'flushReaction'
+        ? 'bark'
+        : state === 'stopWatch'
+          ? 'pant'
+          : state === 'searchTrot' || state === 'run'
+            ? 'movement'
+            : state === 'celebrate'
+              ? 'celebrate'
+              : undefined;
+    if (vocalization) this.scene.events.emit('dog-vocalization', { vocalization });
   }
 
   private positionOnPath(flushElapsed: number) {
@@ -133,6 +145,8 @@ export class DogFlushSystem {
       depth: propDepth.depth,
       propId: propDepth.propId,
       relation: propDepth.relation,
+      mapDepth: normalized.y,
+      occlusion: propDepth.relation === 'behind' ? .32 : 0,
     });
   }
 }

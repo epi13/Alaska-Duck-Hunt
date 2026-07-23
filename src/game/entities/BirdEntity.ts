@@ -265,6 +265,22 @@ export class BirdEntity extends Phaser.GameObjects.Sprite {
     this.applyStateVisual();
     this.applyFacing();
     this.playState(next);
+    const spatial = {
+      speciesId: this.plan.speciesId,
+      family: this.definition.family,
+      surface: this.plan.surface,
+      worldX: this.x,
+      mapDepth: this.sceneDepth,
+      occlusion: this.environmentalOcclusion,
+      rear: this.isSurfaceBound && this.environmentalDepth !== undefined && this.environmentalDepth < this.depth,
+    };
+    if (['alert', 'revealing'].includes(next) && ['concealed', 'resting', 'foraging', 'walking', 'swimming', 'diving', 'perched', 'settled'].includes(previous)) {
+      this.scene.events.emit('bird-flush', spatial);
+    } else if (next === 'takeoff') {
+      this.scene.events.emit('bird-takeoff', spatial);
+    } else if (next === 'settled') {
+      this.scene.events.emit('bird-land', spatial);
+    }
     this.scene.events.emit('bird-state', { speciesId: this.plan.speciesId, from: previous, to: next, surface: this.plan.surface });
   }
 

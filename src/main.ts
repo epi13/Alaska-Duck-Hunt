@@ -7,10 +7,49 @@ import { sceneMapByLocation } from './data/scene-maps';
 import { scenePropLayoutByLocation } from './data/scene-props';
 import { AudioManager } from './services/audio';
 import { BrowserInputProvider, type InputEvent } from './core/input';
+import type { BirdFamily } from './core/birds/bird-placement';
+import type { BirdSurface } from './core/birds/bird-plan';
+import type { AudioBus } from './core/audio/audio-bus';
+import type { AudioTelemetry, SpatialAudioInput } from './services/audio';
 import './styles/main.css';
 
 const root = document.querySelector<HTMLDivElement>('#app')!;
 const audio = new AudioManager();
+const audioSettingBus: Readonly<Record<string, AudioBus>> = {
+  'Master volume': 'master',
+  Music: 'music',
+  Effects: 'effects',
+  Ambience: 'ambience',
+  Birds: 'birds',
+  Dog: 'dog',
+  UI: 'UI',
+};
+const audioMuteBus: Readonly<Record<string, AudioBus>> = {
+  'Mute music': 'music',
+  'Mute ambience': 'ambience',
+  'Mute effects': 'effects',
+  'Mute birds': 'birds',
+  'Mute dog': 'dog',
+  'Mute UI': 'UI',
+};
+applyStoredAudioSettings();
+window.addEventListener('adh-audio', ((event: CustomEvent<AudioTelemetry>) => {
+  const layer = document.querySelector<HTMLElement>('#aim-layer');
+  if (!layer) return;
+  layer.dataset.audioLastCue = event.detail.cue;
+  layer.dataset.audioLastBus = event.detail.bus;
+  layer.dataset.audioLastStatus = event.detail.status;
+  layer.dataset.audioPan = String(event.detail.pan ?? 0);
+  layer.dataset.audioGain = String(event.detail.gain ?? 0);
+  layer.dataset.audioLowpass = String(event.detail.lowpassHz ?? 18_000);
+  layer.dataset.audioEventCount = String(Number(layer.dataset.audioEventCount ?? 0) + 1);
+  layer.dataset.audioCueHistory = `${layer.dataset.audioCueHistory ?? ''}>${event.detail.cue}:${event.detail.status}`.slice(-2_000);
+}) as EventListener);
+window.addEventListener('adh-audio-state', ((event: CustomEvent<{ unlocked: boolean; contextState: string; gains: object; muted: object }>) => {
+  root.dataset.audioUnlocked = String(event.detail.unlocked);
+  root.dataset.audioContextState = event.detail.contextState;
+  root.dataset.audioSettings = JSON.stringify({ gains: event.detail.gains, muted: event.detail.muted });
+}) as EventListener);
 let game: Phaser.Game | undefined;
 let browserInput: BrowserInputProvider | undefined;
 let selectedMode: GameMode = 'campaign';
@@ -23,7 +62,7 @@ function shell(content: string) {
 function bindNav() {
   root.querySelectorAll<HTMLElement>('[data-go]').forEach((el) =>
     el.addEventListener('click', () => {
-      audio.nav();
+      void audio.unlock().then(() => audio.nav());
       const page = el.dataset.go;
       if (page === 'menu') menu();
       else if (page === 'modes') modeSelect();
@@ -51,6 +90,7 @@ function menu() {
     `<section class="menu-layout"><div class="menu-copy"><h1>THE MIGRATION<br>IS <em>UNDERWAY.</em></h1><p>Track the wind. Know the silhouette. Make every shell count across Alaska’s wildest flyways.</p><button class="primary large" data-go="campaign">CONTINUE CAMPAIGN <span>→</span></button><button data-go="modes">CHOOSE HUNT MODE</button></div><div class="menu-art" role="img" aria-label="Pixel art pintails and an Alaskan Husky in a mountain delta"><div class="sun"></div><div class="mountains">▲ ▲ ▲</div><div class="bird-flight">⌁ ︿ ⌁</div><div class="menu-husky" role="img" aria-label="Original pixel-art Alaskan Husky field companion"></div><div class="reeds">╱╲╱╲╱╲╱╲╱╲</div></div><nav class="menu-rail"><button data-go="guide">${icon('◈')}<span>FIELD GUIDE<small>${species.length} species logged</small></span></button><button data-go="stats">${icon('⌁')}<span>RECORDS<small>Local profile</small></span></button><button data-go="achievements">${icon('✦')}<span>ACHIEVEMENTS<small>12 challenges</small></span></button><button data-go="controller">${icon('⌁')}<span>CONTROLLER LAB<small>Simulator ready</small></span></button></nav></section>`,
   );
   bindNav();
+  audio.setMusic('menu');
 }
 function modeSelect() {
   shell(
@@ -85,6 +125,7 @@ function briefing() {
     `<section class="brief"><div><p>PRE-HUNT BRIEFING</p><h1>${l.name}</h1><h2>${modes.find((m) => m.id === selectedMode)?.name}</h2><p>${l.habitat}. Expect ${l.hazards.join(' and ')} with ${l.ambience}.</p><dl><div><dt>OBJECTIVE</dt><dd>Score 1,200+ and maintain 45% accuracy</dd></div><div><dt>FIELD RULE</dt><dd>Identify silhouettes. Protected birds carry a severe penalty.</dd></div><div><dt>AMMUNITION</dt><dd>5 fictional game shells • R to reload</dd></div></dl><button class="primary large" id="start-hunt">START HUNT</button></div><aside><h3>TARGET PROFILE</h3><div class="bird-card">⌁</div><b>NORTHERN PINTAIL</b><p>Long neck, pointed tail, swift direct flight.</p><small>Game limits are fictional and are not real regulations.</small></aside></section>`,
   );
   document.querySelector('#start-hunt')?.addEventListener('click', startHunt);
+  audio.setMusic('briefing');
 }
 function startHunt() {
   browserInput?.disconnect();
@@ -93,9 +134,13 @@ function startHunt() {
   game = undefined;
   const locationIndex = Number(sessionStorage.getItem('location') ?? 2);
   const selectedLocation = locations[locationIndex] ?? locations[2]!;
+  void audio.unlock();
+  audio.cleanupScene();
   const selectedSceneMap = sceneMapByLocation.get(selectedLocation.id);
   const selectedPropLayout = scenePropLayoutByLocation.get(selectedLocation.id);
   root.innerHTML = `<div id="game"></div><div id="aim-layer" aria-label="Hunt aiming surface with working Alaskan Husky companion" data-shots="0" data-sprite-birds="0" data-scene-layers="4" data-dog-character="alaska-husky" data-dog-animation-state="idle" data-dog-layer="ground" data-location-id="${selectedLocation.id}" data-scene-background="assets/scenes/${selectedLocation.id}.png" data-scene-map-regions="${selectedSceneMap?.regions.length ?? 0}" data-scene-prop-count="${selectedPropLayout?.placements.length ?? 0}" data-scene-prop-invalid="0" data-dog-path-ids="${selectedSceneMap?.dogPatrolPaths.map(({ id }) => id).join(',') ?? ''}" data-scene-map-debug="${new URLSearchParams(location.search).get('debugSceneMap') === '1'}"></div><div class="hud"><div><small>SCORE</small><b id="score">000000</b><span id="combo">COMBO ×0</span></div><div class="objective">PINTAIL • FIELD ROUND</div><div><small>TIME</small><b id="time">01:00</b></div></div><div class="ammo"><small>SHELLS</small><b id="ammo">●●●●●</b><span>R RELOAD</span></div><div id="notice" aria-live="polite"></div><div id="pause" class="overlay hidden"><h2>HUNT PAUSED</h2><button id="resume">RESUME</button><button id="quit">RETURN TO MENU</button></div>`;
+  audio.setAmbience(selectedLocation.id);
+  audio.setMusic('hunt');
   const scene = new HuntScene(locationIndex);
   game = new Phaser.Game({
     type: Phaser.AUTO,
@@ -125,8 +170,13 @@ function startHunt() {
     } else if (event.action === 'pause') {
       huntPaused = !huntPaused;
       document.querySelector('#pause')?.classList.toggle('hidden', !huntPaused);
-      if (huntPaused) scene.pauseHunt();
-      else scene.resumeHunt();
+      if (huntPaused) {
+        scene.pauseHunt();
+        void audio.pause();
+      } else {
+        scene.resumeHunt();
+        void audio.resume();
+      }
     } else if (event.action === 'fullscreen') {
       void scene.scale.toggleFullscreen();
     }
@@ -315,7 +365,7 @@ function startHunt() {
       );
       scene.events.on(
         'dog-map-position',
-        ({ characterId, animationState, frame, facing, flipX, reducedMotion, animationPhase, animationRateMultiplier, pathId, worldX, worldY, renderedContactY, contactError, scale, depth, propId, relation }: { characterId: string; animationState: string; frame: string | number; facing: string; flipX: boolean; reducedMotion: boolean; animationPhase: number; animationRateMultiplier: number; pathId: string; worldX: number; worldY: number; renderedContactY: number; contactError: number; scale: number; depth: number; propId?: string; relation: string }) => {
+        ({ characterId, animationState, frame, facing, flipX, reducedMotion, animationPhase, animationRateMultiplier, pathId, worldX, worldY, renderedContactY, contactError, scale, depth, propId, relation, mapDepth, occlusion }: { characterId: string; animationState: string; frame: string | number; facing: string; flipX: boolean; reducedMotion: boolean; animationPhase: number; animationRateMultiplier: number; pathId: string; worldX: number; worldY: number; renderedContactY: number; contactError: number; scale: number; depth: number; propId?: string; relation: string; mapDepth: number; occlusion: number }) => {
           aimLayer?.setAttribute('data-dog-character', characterId);
           aimLayer?.setAttribute('data-dog-animation-state', animationState);
           aimLayer?.setAttribute('data-dog-frame', String(frame));
@@ -333,8 +383,34 @@ function startHunt() {
           aimLayer?.setAttribute('data-dog-display-depth', depth.toFixed(2));
           aimLayer?.setAttribute('data-dog-prop-id', propId ?? 'none');
           aimLayer?.setAttribute('data-dog-prop-relation', relation);
+          audio.setDogPosition({ worldX, worldWidth: scene.scale.width, mapDepth, occlusion, rear: relation === 'behind' });
         },
       );
+      const birdSpatial = (event: { worldX: number; mapDepth: number; occlusion?: number; rear?: boolean }): SpatialAudioInput => ({
+        worldX: event.worldX,
+        worldWidth: scene.scale.width,
+        mapDepth: event.mapDepth,
+        occlusion: event.occlusion,
+        rear: event.rear,
+      });
+      scene.events.on('weapon-fired', () => audio.route({ type: 'weapon-fired' }));
+      scene.events.on('weapon-empty', () => audio.route({ type: 'weapon-empty' }));
+      scene.events.on('weapon-reloaded', () => audio.route({ type: 'weapon-reloaded' }));
+      scene.events.on('score-result', ({ result, x, depth, occlusion }: { result: 'hit' | 'miss' | 'protected'; x: number; depth: number; occlusion: number }) =>
+        audio.route({ type: 'score-result', result }, { worldX: x, worldWidth: scene.scale.width, mapDepth: depth, occlusion }));
+      scene.events.on('bird-call', (event: { speciesId: string; family: BirdFamily; worldX: number; mapDepth: number; occlusion: number; rear: boolean }) =>
+        audio.route({ type: 'bird-call', speciesId: event.speciesId, family: event.family }, birdSpatial(event)));
+      scene.events.on('bird-flush', (event: { speciesId: string; family: BirdFamily; surface: BirdSurface; worldX: number; mapDepth: number; occlusion: number; rear: boolean }) =>
+        audio.route({ type: 'bird-flush', speciesId: event.speciesId, family: event.family, surface: event.surface }, birdSpatial(event)));
+      scene.events.on('bird-takeoff', (event: { family: BirdFamily; surface: BirdSurface; worldX: number; mapDepth: number; occlusion: number; rear: boolean }) =>
+        audio.route({ type: 'bird-takeoff', family: event.family, surface: event.surface }, birdSpatial(event)));
+      scene.events.on('bird-land', (event: { surface: BirdSurface; worldX: number; mapDepth: number; occlusion: number; rear: boolean }) =>
+        audio.route({ type: 'bird-land', surface: event.surface }, birdSpatial(event)));
+      scene.events.on('dog-vocalization', ({ vocalization }: { vocalization: 'sniff' | 'bark' | 'pant' | 'movement' | 'celebrate' }) =>
+        audio.route({ type: 'dog-vocalization', vocalization }));
+      scene.events.on('environment-one-shot', ({ sound, ...position }: { sound: 'rain' | 'water' | 'vegetation'; worldX: number; mapDepth: number; occlusion?: number }) =>
+        audio.route({ type: 'environment-one-shot', sound }, birdSpatial(position)));
+      scene.events.on('hunt-phase', ({ phase }: { phase: 'active' | 'final' }) => audio.setMusic(phase === 'final' ? 'final' : 'hunt'));
       scene.events.on(
         'bird-state',
         ({ speciesId, from, to, surface }: { speciesId: string; from: string | null; to: string; surface: string }) => {
@@ -386,7 +462,6 @@ function startHunt() {
         aimLayer?.setAttribute('data-dog-layer', layer),
       );
       scene.events.on('notice', (n: string) => {
-        audio.shot();
         const el = document.querySelector('#notice');
         if (el) {
           el.textContent = n;
@@ -411,6 +486,7 @@ function startHunt() {
       pauseOverlay.classList.add('hidden');
     }
     scene.resumeHunt();
+    void audio.resume();
     game?.canvas.focus({ preventScroll: true });
   });
   document.querySelector('#quit')?.addEventListener('click', () => {
@@ -418,6 +494,7 @@ function startHunt() {
     browserInput = undefined;
     game?.destroy(true);
     game = undefined;
+    audio.cleanupScene();
     menu();
   });
 }
@@ -430,6 +507,7 @@ function results(r: { score: number; hits: number; shots: number; accuracy: numb
   browserInput = undefined;
   game?.destroy(true);
   game = undefined;
+  audio.cleanupScene();
   audio.success();
   shell(
     `<section class="results"><p>ROUND COMPLETE</p><h1>DELTA CLEARED</h1><div class="score-result">${r.score.toLocaleString()}</div><div class="result-grid"><div><b>${r.hits}</b><span>VALID HITS</span></div><div><b>${r.accuracy}%</b><span>ACCURACY</span></div><div><b>${r.shots}</b><span>SHOTS</span></div><div><b>${r.score >= 1200 ? 'A' : 'B'}</b><span>RATING</span></div></div><div><button class="primary" id="retry">RETRY</button><button data-go="menu">MAIN MENU</button></div></section>`,
@@ -453,8 +531,9 @@ function fieldGuideBird(id: string, common: string, target: boolean) {
   return `<div class="guide-bird has-sprite ${target ? '' : 'protected'}" role="img" aria-label="Animated ${common} behavior preview" style="background-image:url('${art.previewPath}')"></div>`;
 }
 function settings() {
+  const audioSettings = ['Master volume', 'Music', 'Effects', 'Ambience', 'Birds', 'Dog', 'UI'];
   shell(
-    `<section class="page settings"><div class="section-title"><p>PLAYER CONFIGURATION</p><h1>SETTINGS</h1></div>${['Master volume', 'Music', 'Effects', 'Ambience', 'Aim sensitivity', 'Reticle size', 'Text scale'].map((x, i) => `<label>${x}<input type="range" min="0" max="100" value="${i < 4 ? 65 : 50}" data-setting="${x}"></label>`).join('')}<div class="toggles">${['Aim assist', 'High-contrast reticle', 'Reduced motion', 'Reduced flashing', 'Screen shake', 'CRT scanlines', 'Mute'].map((x) => `<label><input type="checkbox" data-setting="${x}">${x}</label>`).join('')}</div><h2>CONTROLS</h2><p>Mouse / touch aim • Left click / Space fire • WASD / arrows reticle • R reload • Esc pause • F fullscreen • M mute • Tab focus</p><button id="export">EXPORT SAVE</button><button id="reset">RESET LOCAL DATA</button></section>`,
+    `<section class="page settings"><div class="section-title"><p>PLAYER CONFIGURATION</p><h1>SETTINGS</h1></div>${[...audioSettings, 'Aim sensitivity', 'Reticle size', 'Text scale'].map((x) => `<label>${x}<input type="range" min="0" max="100" value="${audioSettingBus[x] ? 65 : 50}" data-setting="${x}"></label>`).join('')}<div class="toggles">${['Aim assist', 'High-contrast reticle', 'Reduced motion', 'Reduced flashing', 'Reduced ambience', 'Screen shake', 'CRT scanlines', 'Mute', ...Object.keys(audioMuteBus)].map((x) => `<label><input type="checkbox" data-setting="${x}">${x}</label>`).join('')}</div><h2>CONTROLS</h2><p>Mouse / touch aim • Left click / Space fire • WASD / arrows reticle • R reload • Esc pause • F fullscreen • M mute • Tab focus</p><button id="export">EXPORT SAVE</button><button id="reset">RESET LOCAL DATA</button></section>`,
   );
   root.querySelectorAll<HTMLInputElement>('[data-setting]').forEach((i) => {
     const key = `adh-${i.dataset.setting}`;
@@ -463,9 +542,18 @@ function settings() {
       if (i.type === 'checkbox') i.checked = saved === 'true';
       else i.value = saved;
     }
-    i.onchange = () => {
+    i.oninput = () => {
       localStorage.setItem(key, i.type === 'checkbox' ? String(i.checked) : i.value);
       if (i.dataset.setting === 'Reduced motion') root.classList.toggle('reduce-motion', i.checked);
+      const bus = audioSettingBus[i.dataset.setting ?? ''];
+      if (bus) {
+        const reduced = bus === 'ambience' && localStorage.getItem('adh-Reduced ambience') === 'true';
+        audio.setBusGain(bus, Number(i.value) / 100 * (reduced ? .45 : 1));
+      }
+      if (i.dataset.setting === 'Reduced ambience') applyStoredAudioSettings();
+      if (i.dataset.setting === 'Mute') audio.muted = i.checked;
+      const mutedBus = audioMuteBus[i.dataset.setting ?? ''];
+      if (mutedBus) audio.setBusMuted(mutedBus, i.checked);
     };
   });
   document.querySelector('#export')?.addEventListener('click', () => {
@@ -520,12 +608,26 @@ function credits() {
 window.addEventListener('keydown', (e) => {
   if (e.key.toLowerCase() === 'm') {
     audio.muted = !audio.muted;
+    localStorage.setItem('adh-Mute', String(audio.muted));
   }
   if (e.key === 'Enter' && document.querySelector<HTMLElement>('.splash #enter'))
     document.querySelector<HTMLElement>('.splash #enter')?.click();
 });
 if (localStorage.getItem('adh-launched')) menu();
 else splash();
+
+function applyStoredAudioSettings() {
+  for (const [setting, bus] of Object.entries(audioSettingBus)) {
+    const fallback = bus === 'master' ? 65 : bus === 'music' ? 55 : 65;
+    const stored = Number(localStorage.getItem(`adh-${setting}`) ?? fallback);
+    const reduced = bus === 'ambience' && localStorage.getItem('adh-Reduced ambience') === 'true';
+    audio.setBusGain(bus, stored / 100 * (reduced ? .45 : 1));
+  }
+  audio.muted = localStorage.getItem('adh-Mute') === 'true';
+  for (const [setting, bus] of Object.entries(audioMuteBus)) {
+    audio.setBusMuted(bus, localStorage.getItem(`adh-${setting}`) === 'true');
+  }
+}
 
 if (import.meta.env.DEV && 'serviceWorker' in navigator) {
   void navigator.serviceWorker

@@ -10,6 +10,7 @@ import { validateSceneMap } from '../src/core/scenes/scene-map';
 import { validateScenePropLayout } from '../src/core/scenes/scene-props';
 import { scenePropLayoutByLocation, scenePropLayouts } from '../src/data/scene-props';
 import { huskySprite } from '../src/data/husky-sprites';
+import { audioAssets } from '../src/data/audio-assets';
 
 const birdIds = birdSprites.map((definition) => definition.speciesId);
 if (new Set(birdIds).size !== birdIds.length || new Set(species.map((entry) => entry.id)).size !== species.length) throw new Error('Species and sprite ids must be unique.');
@@ -129,7 +130,52 @@ for (const rootEntry of await readdir('public/assets/birds', { withFileTypes: tr
 const spriteSource = await readFile('src/data/bird-sprites.ts', 'utf8');
 if (/assets\/birds\/[a-z-]+\.png/.test(spriteSource)) throw new Error('Runtime still references an obsolete flat bird sheet.');
 const viteConfig = await readFile('vite.config.ts', 'utf8');
-if (!viteConfig.includes('png,svg,json')) throw new Error('PWA precache glob must include atlas PNG and JSON metadata.');
+if (!viteConfig.includes('png,svg,json,ogg')) throw new Error('PWA precache glob must include atlas PNG, JSON metadata, and offline Ogg audio.');
+
+const audioManifest = JSON.parse(await readFile('assets/generated/audio/manifest.json', 'utf8')) as {
+  generatedAt?: string;
+  assets?: Array<{
+    id?: string;
+    masterPath?: string;
+    processedPath?: string;
+    masterSha256?: string;
+    processedSha256?: string;
+    originalProceduralSynthesis?: boolean;
+    externalRecordingUsed?: boolean;
+    license?: string;
+  }>;
+};
+await access('AUDIO_SOURCES_AND_LICENSES.md');
+if (audioManifest.generatedAt !== '2026-07-22' || audioManifest.assets?.length !== audioAssets.length) {
+  throw new Error('Audio provenance manifest must cover every production cue.');
+}
+const declaredAudioFiles = new Set<string>();
+for (const definition of audioAssets) {
+  const entry = audioManifest.assets.find(({ id }) => id === definition.id);
+  const expectedProcessedPath = `public/${definition.path}`;
+  if (!entry
+    || entry.masterPath !== definition.masterPath
+    || entry.processedPath !== expectedProcessedPath
+    || entry.originalProceduralSynthesis !== true
+    || entry.externalRecordingUsed !== false
+    || !entry.license?.includes('MIT')) {
+    throw new Error(`${definition.id} has incomplete or unsafe audio provenance.`);
+  }
+  const master = await readFile(definition.masterPath);
+  const processed = await readFile(expectedProcessedPath);
+  if (master.subarray(0, 4).toString('ascii') !== 'RIFF' || processed.subarray(0, 4).toString('ascii') !== 'OggS') {
+    throw new Error(`${definition.id} must retain a WAV master and ship an Ogg derivative.`);
+  }
+  if (createHash('sha256').update(master).digest('hex') !== entry.masterSha256
+    || createHash('sha256').update(processed).digest('hex') !== entry.processedSha256) {
+    throw new Error(`${definition.id} does not match its licensed audio checksum.`);
+  }
+  declaredAudioFiles.add(`${definition.id}.ogg`);
+}
+const shippedAudioFiles = (await readdir('public/assets/audio')).filter((name) => name.endsWith('.ogg'));
+if (shippedAudioFiles.length !== declaredAudioFiles.size || shippedAudioFiles.some((name) => !declaredAudioFiles.has(name))) {
+  throw new Error('Every shipped audio file must be declared in the typed and licensed manifests.');
+}
 
 for (const id of locationIds) {
   const path = `public/assets/scenes/${id}.png`;

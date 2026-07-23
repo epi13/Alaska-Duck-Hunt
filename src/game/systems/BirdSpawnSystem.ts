@@ -14,8 +14,11 @@ export class BirdSpawnSystem {
   readonly birds: BirdEntity[] = [];
   private profiles: BirdBehaviorProfile[];
   private lastSpawn = -10_000;
+  private nextCallAt = 4_800;
+  private readonly callRng: SeededRandom;
   constructor(private scene: Phaser.Scene, private rng: SeededRandom, locationId: string, private sceneMap: SceneMapSystem, private sceneProps: ScenePropSystem, private cap = 14) {
     this.profiles = profilesForLocation(locationId, birdBehaviors);
+    this.callRng = rng.fork(`audio-calls-${locationId}`);
     if (import.meta.env.DEV) this.applyDebugSpawnOverride();
   }
 
@@ -66,6 +69,21 @@ export class BirdSpawnSystem {
       }
     }
     for (let index = this.birds.length - 1; index >= 0; index -= 1) if (!this.birds[index]!.active) this.birds.splice(index, 1);
+    if (nowMs >= this.nextCallAt) {
+      const candidates = this.birds.filter((bird) => bird.active && !['hit', 'falling', 'escaped'].includes(bird.state));
+      const bird = candidates.length ? this.callRng.pick(candidates) : undefined;
+      if (bird) {
+        this.scene.events.emit('bird-call', {
+          speciesId: bird.plan.speciesId,
+          family: bird.definition.family,
+          worldX: bird.x,
+          mapDepth: bird.sceneDepth,
+          occlusion: bird.isSurfaceBound ? .12 : 0,
+          rear: false,
+        });
+      }
+      this.nextCallAt = nowMs + this.callRng.int(6_500, 13_500);
+    }
     if (import.meta.env.DEV) {
       this.scene.events.emit('bird-individual-plans', this.birds.map(({ plan }) => ({
         speciesId: plan.speciesId,

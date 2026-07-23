@@ -24,6 +24,7 @@ export class HuntScene extends Phaser.Scene {
   private ended = false;
   private paused = false;
   private rng = new SeededRandom('default');
+  private audioRng = new SeededRandom('default-audio');
   private cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
   private moveKeys?: Record<'up' | 'down' | 'left' | 'right', Phaser.Input.Keyboard.Key>;
   private background?: Phaser.GameObjects.Image;
@@ -35,6 +36,9 @@ export class HuntScene extends Phaser.Scene {
   private sceneMapSystem?: SceneMapSystem;
   private scenePropSystem?: ScenePropSystem;
   private featherPool: Phaser.GameObjects.Rectangle[] = [];
+  private finalSecondsAnnounced = false;
+  private nextEnvironmentSoundAt = 8_000;
+  private environmentSound: 'rain' | 'water' | 'vegetation' = 'vegetation';
 
   constructor(location = 2) { super('hunt'); this.requestedLocation = location; }
 
@@ -49,7 +53,13 @@ export class HuntScene extends Phaser.Scene {
 
   create(data: { seed?: string; location?: number } = {}) {
     this.rng = new SeededRandom(data.seed ?? new URLSearchParams(location.search).get('seed') ?? new Date().toISOString().slice(0, 10));
+    this.audioRng = this.rng.fork('environment-audio');
     const loc = locations[data.location ?? this.requestedLocation] ?? locations[2]!;
+    this.environmentSound = ['aleutian', 'southeast'].includes(loc.id)
+      ? 'rain'
+      : ['cook', 'copper', 'river', 'matsu'].includes(loc.id)
+        ? 'water'
+        : 'vegetation';
     this.locationName = loc.name;
     this.cameras.main.setBackgroundColor(loc.palette[3]);
     this.createBackground(loc.id);
@@ -71,6 +81,7 @@ export class HuntScene extends Phaser.Scene {
     this.emitHud();
     this.events.emit('scene-art-ready', { locationId: loc.id, background: this.activeSceneArt?.background, layers: 4 });
     this.events.emit('scene-map-ready', { locationId: loc.id, regionCount: sceneMap.regions.length, dogPathIds: sceneMap.dogPatrolPaths.map(({ id }) => id) });
+    this.events.emit('hunt-phase', { phase: 'active', locationId: loc.id });
     const resize = () => this.layoutHabitat();
     this.scale.on(Phaser.Scale.Events.RESIZE, resize);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.scale.off(Phaser.Scale.Events.RESIZE, resize));
@@ -101,14 +112,20 @@ export class HuntScene extends Phaser.Scene {
 
   fire(x: number, y: number) {
     if (this.paused || this.ended) return;
-    if (this.ammo <= 0) { this.events.emit('notice', 'EMPTY — PRESS R'); return; }
+    if (this.ammo <= 0) {
+      this.events.emit('weapon-empty');
+      this.events.emit('notice', 'EMPTY — PRESS R');
+      return;
+    }
     this.ammo -= 1;
     this.shots += 1;
+    this.events.emit('weapon-fired');
     this.cameras.main.shake(45, 0.002);
     const bird = this.spawnSystem?.hitAt(x, y);
     const scoredState = bird?.state;
     if (!bird || !scoredState || !bird.strike()) {
       this.combo = 0;
+      this.events.emit('score-result', { result: 'miss', x, y, depth: 1, occlusion: 0 });
       this.events.emit('notice', 'MISS');
       this.emitHud();
       return;
@@ -118,12 +135,14 @@ export class HuntScene extends Phaser.Scene {
     if (scoring?.role === 'protected') {
       this.combo = 0;
       this.score = Math.max(0, this.score - result.protectedPenalty);
+      this.events.emit('score-result', { result: 'protected', x: bird.x, y: bird.y, depth: bird.sceneDepth, occlusion: 0 });
       this.events.emit('notice', `PROTECTED SPECTACLED EIDER — −${result.protectedPenalty}`);
       this.feathers(bird.x, bird.y, 0xe86c5b);
     } else {
       this.combo += 1;
       this.hits += 1;
       this.score += result.points;
+      this.events.emit('score-result', { result: 'hit', x: bird.x, y: bird.y, depth: bird.sceneDepth, occlusion: 0 });
       this.events.emit('notice', `${result.label ?? 'CLEAN HIT'} +${result.points}`);
       this.feathers(bird.x, bird.y, 0xf3d49a);
     }
@@ -150,10 +169,16 @@ export class HuntScene extends Phaser.Scene {
     this.featherPool = Array.from({ length: 24 }, () => this.add.rectangle(0, 0, 4, 8, 0xf3d49a).setDepth(90).setActive(false).setVisible(false));
   }
 
-  private reload() { if (this.paused || this.ended) return; this.ammo = 5; this.events.emit('notice', 'RELOADED'); this.emitHud(); }
+  private reload() {
+    if (this.paused || this.ended) return;
+    this.ammo = 5;
+    this.events.emit('weapon-reloaded');
+    this.events.emit('notice', 'RELOADED');
+    this.emitHud();
+  }
   private emitHud() { this.events.emit('hud', { score: this.score, ammo: this.ammo, hits: this.hits, shots: this.shots, combo: this.combo, time: Math.ceil(this.timeLeft), location: this.locationName }); }
 
-  update(_time: number, delta: number) {
+  update(time: number, delta: number) {
     if (this.paused || this.ended) return;
     const speed = 360 * (delta / 1_000);
     if (this.cursors?.left.isDown || this.moveKeys?.left.isDown) this.reticle.x -= speed;
@@ -165,7 +190,20 @@ export class HuntScene extends Phaser.Scene {
     this.spawnSystem?.update(this.time.now, delta);
     this.dogSystem?.update(this.time.now, delta, this.spawnSystem?.birds ?? []);
     this.scenePropSystem?.update(this.time.now);
+    if (time >= this.nextEnvironmentSoundAt) {
+      this.events.emit('environment-one-shot', {
+        sound: this.environmentSound,
+        worldX: this.audioRng.int(0, Math.max(1, Math.round(this.scale.width))),
+        mapDepth: .25 + this.audioRng.next() * .7,
+        occlusion: this.audioRng.next() * .24,
+      });
+      this.nextEnvironmentSoundAt = time + this.audioRng.int(9_000, 17_000);
+    }
     this.timeLeft -= delta / 1_000;
+    if (!this.finalSecondsAnnounced && this.timeLeft <= 10) {
+      this.finalSecondsAnnounced = true;
+      this.events.emit('hunt-phase', { phase: 'final' });
+    }
     if (this.timeLeft <= 0) {
       this.ended = true;
       this.dogSystem?.celebrate();

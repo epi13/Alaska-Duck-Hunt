@@ -67,6 +67,49 @@ test('menu controls never fire a gameplay shot', async ({ page }) => {
   await expect(page.locator('#aim-layer')).toHaveCount(0);
 });
 
+test('audio unlock, live buses, semantic weapon routing, and pause resume work', async ({ page, request }, testInfo) => {
+  await expect(page.locator('#app')).toHaveAttribute('data-audio-unlocked', 'true');
+  await expect(page.locator('#app')).toHaveAttribute('data-audio-context-state', 'running');
+  const shotAsset = await request.get('/assets/audio/weapon-shot.ogg');
+  expect(shotAsset.ok()).toBe(true);
+  expect(shotAsset.headers()['content-type']).toMatch(/audio\/ogg|application\/ogg/);
+
+  await page.getByRole('button', { name: 'Settings' }).first().click();
+  await page.getByRole('slider', { name: 'Music', exact: true }).fill('22');
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('adh-Music'))).toBe('22');
+  await expect.poll(async () => {
+    const settings = JSON.parse((await page.locator('#app').getAttribute('data-audio-settings')) ?? '{}') as { gains?: { music?: number } };
+    return settings.gains?.music;
+  }).toBeCloseTo(.22);
+  await page.getByRole('checkbox', { name: 'Mute', exact: true }).check();
+  await expect.poll(async () => {
+    const settings = JSON.parse((await page.locator('#app').getAttribute('data-audio-settings')) ?? '{}') as { muted?: { master?: boolean } };
+    return settings.muted?.master;
+  }).toBe(true);
+  await page.getByRole('checkbox', { name: 'Mute', exact: true }).uncheck();
+  await page.screenshot({ path: testInfo.outputPath('audio-live-bus-settings.png') });
+
+  await page.locator('[data-go="menu"]').first().click();
+  await startHunt(page);
+  const surface = page.locator('#aim-layer');
+  await expect.poll(async () => surface.getAttribute('data-audio-cue-history')).toMatch(/music-hunt:played/);
+  const bounds = await surface.boundingBox();
+  expect(bounds).not.toBeNull();
+  await page.mouse.click(bounds!.x + 24, bounds!.y + 24);
+  await expect.poll(async () => surface.getAttribute('data-audio-cue-history')).toMatch(/weapon-shot:played/);
+  await expect.poll(async () => surface.getAttribute('data-audio-cue-history')).toMatch(/feedback-miss:played/);
+  await page.keyboard.press('r');
+  await expect.poll(async () => surface.getAttribute('data-audio-cue-history')).toMatch(/weapon-reload:played/);
+  for (let index = 0; index < 6; index += 1) await page.keyboard.press('Space');
+  await expect.poll(async () => surface.getAttribute('data-audio-cue-history')).toMatch(/weapon-empty:played/);
+  await page.screenshot({ path: testInfo.outputPath('audio-spatial-hunt.png') });
+
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#app')).toHaveAttribute('data-audio-context-state', 'suspended');
+  await page.getByRole('button', { name: 'Resume' }).click();
+  await expect(page.locator('#app')).toHaveAttribute('data-audio-context-state', 'running');
+});
+
 test('mouse aims and fires exactly once, pause gates fire, and resume restores it', async ({
   page,
 }) => {
@@ -102,6 +145,11 @@ test('mouse aims and fires exactly once, pause gates fire, and resume restores i
   await expect(surface).toHaveAttribute('data-bird-prop-occlusion', /0\.[0-9]+/);
   await expect(surface).toHaveAttribute('data-bird-surface', /water|ground|grass|shore|mud|river|branch|coast/i);
   await expect.poll(async () => surface.getAttribute('data-dog-flush'), { timeout: 20_000 }).not.toBeNull();
+  await expect.poll(async () => surface.getAttribute('data-audio-cue-history'), { timeout: 20_000 }).toMatch(/wing-(?:small|medium|large):played/);
+  await expect.poll(async () => surface.getAttribute('data-audio-cue-history'), { timeout: 20_000 }).toMatch(/dog-bark:played/);
+  await expect(surface).toHaveAttribute('data-audio-pan', /-?[0-9.]+/);
+  await expect(surface).toHaveAttribute('data-audio-gain', /[0-9.]+/);
+  await expect(surface).toHaveAttribute('data-audio-lowpass', /[0-9.]+/);
   await expect(surface).toHaveAttribute('data-bird-state', /alert|standingBonus|preTakeoff|takeoff|flying|climbing|descending/);
   await expect.poll(async () => surface.getAttribute('data-bird-state-history'), { timeout: 8_000 }).toMatch(/takeoff.*flying/);
   const bounds = await surface.boundingBox();
