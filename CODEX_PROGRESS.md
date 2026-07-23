@@ -203,3 +203,13 @@ Last updated: 2026-07-22
 - Validation: asset validation passed; `npm run check` passed with 86 Vitest
   assertions and a production PWA build; all 38 Chromium browser tests passed,
   including deterministic area-four failure, area-five unlock, and reload.
+
+## GitHub Pages deployment recovery (2026-07-23)
+
+- Corrected the Husky browser assertion to accept the canonical `clear`,
+  `behind`, and `front` prop-depth relations, removing the hosted CI-only
+  failure that prevented the Pages artifact from being uploaded.
+- Added explicit Pages configuration and a production artifact gate that
+  rejects source `/src/main.ts` references and missing packaged icons.
+- Documented that repository Pages must use GitHub Actions rather than the
+  legacy `main /` source.
