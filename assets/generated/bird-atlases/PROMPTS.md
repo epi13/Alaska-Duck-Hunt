@@ -39,5 +39,18 @@ ImageGen returned white rather than the requested key for Spectacled Eider, summ
 - Willow Ptarmigan winter: rounded white tundra grouse, black bill, feathered white feet, red comb, black tail feathers visible in flight.
 - Willow Ptarmigan summer: mottled chestnut-brown body, barred flanks, white belly/wing flashes, black bill, feathered feet, red comb.
 - Spectacled Eider drake: protected Alaska sea duck; black chest/body, white back, pale green head, large white eye patches ringed black, orange bill; evasive rather than graphic hit reaction.
+- Northern Pintail hen: slender long-necked mottled brown female, plain pale tan face, dark bill, shorter pointed tail, bronzy speculum.
+- American Wigeon hen: warm brown compact female, brownish-gray head, dark eye smudge, pale black-tipped bill, dark speculum with thin white border.
+- Green-winged Teal hen: very small compact mottled brown female, buff-yellow tail stripe, green speculum, no male shoulder stripe.
+- Greater Scaup hen: warm brown rounded-headed female, darker head, broad blue-gray bill, yellow eye, variable white patch beside bill.
+- Common Eider hen: heavy reddish-brown female with dense dark barring, black bill, and long sloping forehead-to-bill profile.
+- Harlequin hen: compact gray-brown female with a white patch behind the bill, white around the eye, and a neat rear-cheek spot.
+- Spruce Grouse female: brown/gray/buff/black/white mottled female with strong barring below and no male black throat.
+- Spectacled Eider hen: densely barred rich-brown female with black bill, dark forehead, and subtle pale-brown spectacle pattern.
+- Greater White-fronted Goose juvenile: lacks adult white bill-base feathering and black belly bars; duller bare parts and pale rounded upperpart feather tips.
+- Canada Goose juvenile: flight-capable, adult-like head/neck/cheek pattern with restrained softer brown feather edges and modest proportions.
+- Brant juvenile: black neck without the adult white necklace; pale scalloping and rounded pale tips across upperparts.
+
+The eight hen/female and three juvenile keyed masters above were generated 2026-07-22 with the built-in ImageGen edit workflow, using the corresponding project adult sheet only as the pose-layout and pixel-scale reference. Species field marks were constrained from Cornell Lab identification references; the output pixels remain original project art.
 
 Reference paths used for the ten supplied species are under `assets/references/Alaska_Game_Bird_Reference_Collection`. Existing project sheets were used as a pixel-style baseline only for unpictured close relatives. Generated keyed masters are immutable files in `keyed/`; all palette derivatives and alpha-normalized outputs are in `processed/`.

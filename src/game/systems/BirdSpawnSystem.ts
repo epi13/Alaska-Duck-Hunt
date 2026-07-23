@@ -14,8 +14,11 @@ export class BirdSpawnSystem {
   readonly birds: BirdEntity[] = [];
   private profiles: BirdBehaviorProfile[];
   private lastSpawn = -10_000;
+  private nextCallAt = 4_800;
+  private readonly callRng: SeededRandom;
   constructor(private scene: Phaser.Scene, private rng: SeededRandom, locationId: string, private sceneMap: SceneMapSystem, private sceneProps: ScenePropSystem, private cap = 14) {
     this.profiles = profilesForLocation(locationId, birdBehaviors);
+    this.callRng = rng.fork(`audio-calls-${locationId}`);
     if (import.meta.env.DEV) this.applyDebugSpawnOverride();
   }
 
@@ -66,6 +69,40 @@ export class BirdSpawnSystem {
       }
     }
     for (let index = this.birds.length - 1; index >= 0; index -= 1) if (!this.birds[index]!.active) this.birds.splice(index, 1);
+    if (nowMs >= this.nextCallAt) {
+      const candidates = this.birds.filter((bird) => bird.active && !['hit', 'falling', 'escaped'].includes(bird.state));
+      const bird = candidates.length ? this.callRng.pick(candidates) : undefined;
+      if (bird) {
+        this.scene.events.emit('bird-call', {
+          speciesId: bird.plan.speciesId,
+          family: bird.definition.family,
+          worldX: bird.x,
+          mapDepth: bird.sceneDepth,
+          occlusion: bird.isSurfaceBound ? .12 : 0,
+          rear: false,
+        });
+      }
+      this.nextCallAt = nowMs + this.callRng.int(6_500, 13_500);
+    }
+    if (import.meta.env.DEV) {
+      this.scene.events.emit('bird-individual-plans', this.birds.map(({ plan }) => ({
+        speciesId: plan.speciesId,
+        biologicalVariant: plan.biologicalVariant,
+        individualVisualSeed: plan.individualVisualSeed,
+        individualVisualVariant: plan.individualVisualVariant,
+        scaleMultiplier: plan.scaleMultiplier,
+        animationPhase: plan.animationPhase,
+        animationRateMultiplier: plan.animationRateMultiplier,
+        idleDelay: plan.idleDelay,
+        preferredIdleAnimation: plan.preferredIdleAnimation,
+        posePreference: plan.posePreference,
+        speedOffset: plan.speedOffset,
+        reactionOffsetMs: plan.reactionOffsetMs,
+        formationOffsetX: plan.formationOffsetX,
+        formationOffsetY: plan.formationOffsetY,
+      })));
+      this.scene.events.emit('bird-animation-telemetry', this.birds.map((bird) => bird.animationTelemetry));
+    }
     const target = this.birds.find((bird) => bird.active && bird.targetable);
     if (target) this.scene.events.emit('bird-target', { speciesId: target.plan.speciesId, state: target.state, ...target.hitCenter, protected: target.protectedBird });
   }
@@ -87,19 +124,13 @@ export class BirdSpawnSystem {
     const leaderPlan = plans[0];
     if (!leaderPlan) return;
     const query = { speciesId: leaderPlan.speciesId, birdFamily: definition.family };
-    const leader = this.sceneMap.sample(leaderPlan.surface, this.rng, query);
-    if (!leader) {
+    const placements = this.resolveFlockPlacements(plans, query);
+    if (!placements[0]) {
       if (import.meta.env.DEV) throw new Error(`${leaderPlan.speciesId}/${leaderPlan.initialState} has no visible mapped ${leaderPlan.surface} region.`);
       return;
     }
-    for (const plan of plans) {
-      const target = {
-        x: leader.point.x + plan.formationOffsetX,
-        y: leader.point.y + plan.formationOffsetY,
-      };
-      const placement = plan === leaderPlan
-        ? leader
-        : this.sceneMap.projectNear(plan.surface, target, query, .16);
+    for (const [index, plan] of plans.entries()) {
+      const placement = placements[index];
       if (!placement) continue;
       const compatibility = assertBirdPlacement(
         plan.speciesId,
@@ -122,7 +153,32 @@ export class BirdSpawnSystem {
       bird.applyEnvironmentalCover(cover.occlusion, cover.depth);
       if (import.meta.env.DEV) bird.assertContactAt(placement.worldX, placement.worldY);
       this.birds.push(bird);
-      this.scene.events.emit('bird-spawned', { speciesId: plan.speciesId, illustrated: true, lane: 'habitat', initialState: plan.initialState, surface: plan.surface, contactType: compatibility.contact, spawnZone: placement.regionId, sceneRegionId: placement.regionId, sceneDepth: placement.depth, worldX: placement.worldX, worldY: placement.worldY, occluded: placement.occluded, fallback: false });
+      this.scene.events.emit('bird-spawned', {
+        speciesId: plan.speciesId,
+        illustrated: true,
+        lane: 'habitat',
+        initialState: plan.initialState,
+        surface: plan.surface,
+        contactType: compatibility.contact,
+        spawnZone: placement.regionId,
+        sceneRegionId: placement.regionId,
+        sceneDepth: placement.depth,
+        worldX: placement.worldX,
+        worldY: placement.worldY,
+        biologicalVariant: plan.biologicalVariant,
+        individualVisualSeed: plan.individualVisualSeed,
+        individualVisualVariant: plan.individualVisualVariant,
+        scaleMultiplier: plan.scaleMultiplier,
+        animationPhase: plan.animationPhase,
+        animationRateMultiplier: plan.animationRateMultiplier,
+        posePreference: plan.posePreference,
+        speedOffset: plan.speedOffset,
+        reactionOffsetMs: plan.reactionOffsetMs,
+        formationOffsetX: plan.formationOffsetX,
+        formationOffsetY: plan.formationOffsetY,
+        occluded: placement.occluded,
+        fallback: false,
+      });
     }
     this.lastSpawn = this.scene.time.now;
   }
@@ -159,19 +215,56 @@ export class BirdSpawnSystem {
     };
   }
 
+  private resolveFlockPlacement(
+    plan: ReturnType<typeof createFlockPlans>[number],
+    leader: WorldScenePoint,
+    query: { speciesId: string; birdFamily: BirdBehaviorProfile['family'] },
+  ) {
+    for (const compression of [1, .72, .48, .3]) {
+      const target = {
+        x: leader.point.x + plan.formationOffsetX * compression,
+        y: leader.point.y + plan.formationOffsetY * compression,
+      };
+      const placement = this.sceneMap.projectNear(plan.surface, target, query, .16);
+      if (placement) return placement;
+    }
+    return undefined;
+  }
+
+  private resolveFlockPlacements(
+    plans: ReturnType<typeof createFlockPlans>,
+    query: { speciesId: string; birdFamily: BirdBehaviorProfile['family'] },
+  ): Array<WorldScenePoint | undefined> {
+    const leaderPlan = plans[0];
+    if (!leaderPlan) return [];
+    let best: Array<WorldScenePoint | undefined> = [];
+    const desiredVisibleMembers = Math.min(plans.length, 4);
+    for (let attempt = 0; attempt < 6; attempt += 1) {
+      const leader = this.sceneMap.sample(leaderPlan.surface, this.rng, query);
+      if (!leader) break;
+      const placements = plans.map((plan, index) =>
+        index === 0 ? leader : this.resolveFlockPlacement(plan, leader, query));
+      if (placements.filter(Boolean).length > best.filter(Boolean).length) best = placements;
+      if (best.filter(Boolean).length >= desiredVisibleMembers) break;
+    }
+    return best;
+  }
+
   private applyDebugSpawnOverride() {
     const params = new URLSearchParams(globalThis.location?.search ?? '');
     const speciesId = params.get('debugBirdSpecies');
     const surface = params.get('debugBirdSurface') as BirdSurface | null;
     const state = params.get('debugBirdState') as BirdState | null;
-    if (!speciesId && !surface && !state) return;
+    const requestedFlockSize = Number(params.get('debugFlockSize') ?? 1);
+    const debugFlockSize = Math.max(1, Math.min(8, Number.isFinite(requestedFlockSize) ? Math.round(requestedFlockSize) : 1));
+    if (!speciesId && !surface && !state && !params.has('debugFlockSize')) return;
     this.profiles = this.profiles
       .filter((profile) => !speciesId || profile.speciesId === speciesId)
       .map((profile) => ({
         ...profile,
         surfaces: surface ? [surface] : profile.surfaces,
         initialStates: state ? [state] : profile.initialStates,
-        flockSize: [1, 1] as const,
+        flockSize: [debugFlockSize, debugFlockSize] as const,
       }))
       .filter((profile) => profile.surfaces.some((candidateSurface) => profile.initialStates.some((candidateState) =>
         assertCompatible(profile, candidateState, candidateSurface),

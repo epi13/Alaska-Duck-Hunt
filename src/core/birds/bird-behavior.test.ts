@@ -18,6 +18,53 @@ describe('deterministic species behavior', () => {
     if (flock.length > 1) expect(new Set(flock.map((bird) => bird.idleDirection)).size).toBe(2);
   });
 
+  it('gives adjacent members stable individual visual, animation, and movement values', () => {
+    const profile = birdBehaviorBySpecies.get('snow-goose')!;
+    const flock = createFlockPlans(profile, new SeededRandom('individual-replay'));
+    const replay = createFlockPlans(profile, new SeededRandom('individual-replay'));
+    expect(flock).toEqual(replay);
+    expect(flock.length).toBeGreaterThanOrEqual(4);
+    expect(new Set(flock.map(({ individualVisualSeed }) => individualVisualSeed)).size).toBe(flock.length);
+    expect(new Set(flock.map(({ scaleMultiplier }) => scaleMultiplier)).size).toBe(flock.length);
+    expect(new Set(flock.map(({ animationPhase }) => animationPhase)).size).toBe(flock.length);
+    expect(new Set(flock.map(({ animationRateMultiplier }) => animationRateMultiplier)).size).toBe(flock.length);
+    expect(flock[0]?.posePreference).not.toBe(flock[1]?.posePreference);
+    expect(flock[0]?.individualVisualVariant).not.toBe(flock[1]?.individualVisualVariant);
+    for (const member of flock) {
+      expect(member.scaleMultiplier).toBeGreaterThanOrEqual(profile.individualScale[0]);
+      expect(member.scaleMultiplier).toBeLessThanOrEqual(profile.individualScale[1]);
+      expect(member.animationRateMultiplier).toBeGreaterThanOrEqual(profile.animationRateMultiplier[0]);
+      expect(member.animationRateMultiplier).toBeLessThanOrEqual(profile.animationRateMultiplier[1]);
+      expect(member.speedOffset / (member.speed - member.speedOffset)).toBeGreaterThanOrEqual(profile.speedOffsetRatio[0]);
+      expect(member.speedOffset / (member.speed - member.speedOffset)).toBeLessThanOrEqual(profile.speedOffsetRatio[1]);
+    }
+  });
+
+  it('keeps flock intent coordinated while applying plausible biological rules', () => {
+    const snow = createFlockPlans(birdBehaviorBySpecies.get('snow-goose')!, new SeededRandom('mixed-morphs'));
+    expect(new Set(snow.map(({ biologicalVariant }) => biologicalVariant))).toEqual(new Set(['white', 'blue']));
+    expect(new Set(snow.map(({ speciesId }) => speciesId)).size).toBe(1);
+    expect(new Set(snow.map(({ surface }) => surface)).size).toBe(1);
+    expect(new Set(snow.map(({ initialState }) => initialState)).size).toBe(1);
+    expect(new Set(snow.map(({ formation }) => formation)).size).toBe(1);
+    expect(new Set(snow.map(({ flightProfile }) => flightProfile)).size).toBe(1);
+    expect(new Set(snow.map(({ direction }) => direction)).size).toBe(1);
+
+    const ptarmigan = createFlockPlans(birdBehaviorBySpecies.get('ptarmigan')!, new SeededRandom('one-season'));
+    expect(new Set(ptarmigan.map(({ biologicalVariant }) => biologicalVariant)).size).toBe(1);
+    const ptarmiganProfile = birdBehaviorBySpecies.get('ptarmigan')!;
+    const winter = createBirdPlan(
+      { ...ptarmiganProfile, surfaces: ['snowGround'], initialStates: ['resting'] },
+      new SeededRandom('winter-plumage'),
+    );
+    const summer = createBirdPlan(
+      { ...ptarmiganProfile, surfaces: ['tundraGround'], initialStates: ['resting'] },
+      new SeededRandom('summer-plumage'),
+    );
+    expect(winter.biologicalVariant).toBe('winter');
+    expect(summer.biologicalVariant).toBe('summer');
+  });
+
   it('matches grounded animation states to the selected surface', () => {
     const profile = birdBehaviorBySpecies.get('mallard')!;
     for (let seed = 0; seed < 40; seed += 1) {

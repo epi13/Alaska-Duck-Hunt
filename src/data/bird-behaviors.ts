@@ -51,6 +51,36 @@ interface FamilyDefaults {
   takeoffStyle: BirdBehaviorProfile['takeoffStyle'];
 }
 
+type IndividualDefaults = Pick<
+  BirdPlanProfile,
+  | 'biologicalVariantPolicy'
+  | 'individualScale'
+  | 'animationRateMultiplier'
+  | 'speedOffsetRatio'
+  | 'reactionOffsetMs'
+  | 'glideTimingOffsetMs'
+  | 'localPathOffset'
+>;
+
+const individualDefaults: IndividualDefaults = {
+  biologicalVariantPolicy: 'independent',
+  individualScale: [0.94, 1.06],
+  animationRateMultiplier: [0.94, 1.06],
+  speedOffsetRatio: [-0.035, 0.035],
+  reactionOffsetMs: [-90, 150],
+  glideTimingOffsetMs: [-140, 180],
+  localPathOffset: [3, 9],
+};
+
+const familyAnimationRate: Record<BirdFamily, readonly [number, number]> = {
+  dabbler: [0.92, 1.08],
+  diver: [0.94, 1.07],
+  seaDuck: [0.94, 1.06],
+  goose: [0.95, 1.05],
+  crane: [0.96, 1.04],
+  upland: [0.93, 1.07],
+};
+
 const familyDefaults: Record<BirdFamily, FamilyDefaults> = {
   dabbler: {
     surfaces: ['shallowWater', 'mudflat', 'shoreline', 'marshGrass'],
@@ -212,9 +242,18 @@ function profile(
   family: BirdFamily,
   variants: readonly string[],
   fieldNotes: BirdBehaviorProfile['fieldNotes'],
-  overrides: Partial<FamilyDefaults & Pick<BirdBehaviorProfile, 'revealDurationMs'>> = {},
+  overrides: Partial<FamilyDefaults & IndividualDefaults & Pick<BirdBehaviorProfile, 'revealDurationMs'>> = {},
 ): BirdBehaviorProfile {
-  return { speciesId, family, variants, ...familyDefaults[family], ...overrides, fieldNotes };
+  return {
+    speciesId,
+    family,
+    variants,
+    ...familyDefaults[family],
+    ...individualDefaults,
+    animationRateMultiplier: familyAnimationRate[family],
+    ...overrides,
+    fieldNotes,
+  };
 }
 
 export const birdBehaviors: readonly BirdBehaviorProfile[] = [
@@ -283,7 +322,7 @@ export const birdBehaviors: readonly BirdBehaviorProfile[] = [
   profile(
     'canada-goose',
     'goose',
-    ['adult', 'small-adult'],
+    ['adult', 'juvenile'],
     notes('Wetland edge, grass, marsh, or open water', 'Grazes, dabbles, walks deliberately, and posts sentries', 'Heavy staggered run with powerful beats', 'Steady V formations and broad turns', 'Families and flocks', 'Threat posture uses an extended neck'),
     { speed: [150, 205], flockSize: [2, 6], formation: ['line', 'vee'] },
   ),
@@ -292,12 +331,12 @@ export const birdBehaviors: readonly BirdBehaviorProfile[] = [
     'goose',
     ['white', 'blue'],
     notes('Tundra wetland, delta, marsh, or staging flat', 'Dense grazing groups dig for roots and tubers', 'Disturbance spreads in launch waves', 'Steady wingbeats in wavering lines', 'Family groups inside large flocks', 'White and blue morphs remain visible'),
-    { flockSize: [4, 8], formation: ['wave', 'line', 'vee'], reactionDelayMs: [180, 720] },
+    { flockSize: [4, 8], formation: ['wave', 'line', 'vee'], reactionDelayMs: [180, 720], biologicalVariantPolicy: 'mixed-required' },
   ),
   profile(
     'brant',
     'goose',
-    ['adult', 'small-adult'],
+    ['adult', 'juvenile'],
     notes('Lagoon, saltmarsh, mudflat, or shallow marine water', 'Grazes eelgrass and tips in shallow water', 'Skittish compression followed by a rapid low launch', 'Low swarm-like coastal movement', 'Tight social groups', 'Less orderly than Canada Goose formations'),
     { flightProfile: 'lowCoastalFlight', speed: [205, 270], maximumTurnRate: 1.3, formation: ['cluster', 'wave'] },
   ),
@@ -320,7 +359,7 @@ export const birdBehaviors: readonly BirdBehaviorProfile[] = [
     'upland',
     ['summer', 'winter'],
     notes('Willow scrub, tundra ground, snow, or low shrub edge', 'Walks slowly and deliberately while pecking buds and berries', 'Low explosive burst from camouflage', 'Brief low flap-and-glide path', 'Singles, families, and small seasonal groups', 'Usually settles behind nearby willow, rock, or snow cover'),
-    { surfaces: ['tundraGround', 'snowGround', 'marshGrass'], flightProfile: 'shortFlushFlight', landingProbability: 0.84 },
+    { surfaces: ['tundraGround', 'snowGround', 'marshGrass'], flightProfile: 'shortFlushFlight', landingProbability: 0.84, biologicalVariantPolicy: 'flock-consistent' },
   ),
   profile(
     'spectacled',

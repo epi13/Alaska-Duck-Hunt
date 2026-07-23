@@ -16,11 +16,15 @@ export class DogFlushSystem {
   private progressRange: readonly [number, number] = [0, 1];
   private readonly path: DogPatrolPath;
   private readonly phaseOffsetMs: number;
+  private readonly animationPhase: number;
+  private readonly animationRateMultiplier: number;
   private readonly reducedMotion: boolean;
   private currentState: HuskyAnimationState = 'idle';
   constructor(private scene: Phaser.Scene, private sceneMap: SceneMapSystem, private sceneProps: ScenePropSystem, rng: SeededRandom) {
     this.path = rng.pick(sceneMap.dogPatrolPaths());
     this.phaseOffsetMs = rng.int(0, 9_799);
+    this.animationPhase = this.phaseOffsetMs / 9_800;
+    this.animationRateMultiplier = .96 + ((this.phaseOffsetMs * 2_654_435_761) >>> 0) / 0xffff_ffff * .08;
     this.reducedMotion = document.querySelector('#app')?.classList.contains('reduce-motion') === true
       || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     for (const animation of huskySprite.animations) {
@@ -94,8 +98,23 @@ export class DogFlushSystem {
       this.sprite.anims.stop();
       this.sprite.setFrame(definition.frames[0]!);
     } else {
+      const looping = definition.repeat === -1 && !['boundCover', 'flushReaction'].includes(state);
       this.sprite.play(`husky-${state}`, true);
+      this.sprite.anims.timeScale = looping ? this.animationRateMultiplier : 1;
+      if (looping && definition.frames.length > 1) this.sprite.anims.setProgress(this.animationPhase);
     }
+    const vocalization = state === 'sniff'
+      ? 'sniff'
+      : state === 'alert' || state === 'flushReaction'
+        ? 'bark'
+        : state === 'stopWatch'
+          ? 'pant'
+          : state === 'searchTrot' || state === 'run'
+            ? 'movement'
+            : state === 'celebrate'
+              ? 'celebrate'
+              : undefined;
+    if (vocalization) this.scene.events.emit('dog-vocalization', { vocalization });
   }
 
   private positionOnPath(flushElapsed: number) {
@@ -114,6 +133,8 @@ export class DogFlushSystem {
       facing: this.direction > 0 ? 'right' : 'left',
       flipX: this.sprite.flipX,
       reducedMotion: this.reducedMotion,
+      animationPhase: this.animationPhase,
+      animationRateMultiplier: this.sprite.anims.timeScale,
       pathId: this.path.id,
       worldX: world.x,
       worldY: world.y,
@@ -124,6 +145,8 @@ export class DogFlushSystem {
       depth: propDepth.depth,
       propId: propDepth.propId,
       relation: propDepth.relation,
+      mapDepth: normalized.y,
+      occlusion: propDepth.relation === 'behind' ? .32 : 0,
     });
   }
 }

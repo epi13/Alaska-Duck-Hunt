@@ -8,6 +8,14 @@ The shared flow is `concealed/resting/foraging/swimming/perched → alert → pr
 
 `src/core/birds` owns seeded planning, transitions, disturbance timing, targetability, and flight vectors. `src/data/bird-behaviors.ts`, `bird-habitats.ts`, `bird-scoring.ts`, and `bird-sprites.ts` own content. `BirdEntity`, `BirdSpawnSystem`, and `DogFlushSystem` adapt those decisions into Phaser sprites and events. No simulation path calls `Math.random`, and there is no generic bird-art fallback.
 
+## Deterministic loop playback
+
+Every flock member carries a stable `animationPhase` in `[0, 1)`, a family-bounded animation-rate multiplier, and optional idle preferences in its `BirdPlan`. The Phaser adapter maps that phase to a frame and seeks new loops with `AnimationState.setProgress`, then applies the multiplier only to loops. Resting, feeding, walking, swimming, diving, perched, standing, flight, distant-flight, settled, and returning loops therefore remain coordinated in state without sharing a wing or posture frame.
+
+Timed one-shots—reveal, alert, pre-takeoff, takeoff, landing, hit, and falling—always start at frame zero and run at authored speed. An animation-key guard prevents update ticks from restarting the current loop. Reduced-motion mode selects the same deterministic representative frame but leaves it static. The Alaskan Husky derives loop phase and a restrained rate from its existing seeded patrol phase; bound and flush reactions retain their authored first frame and timing. Environmental prop wind already uses a stable hash-derived phase per placement.
+
+Development builds publish `data-bird-animation-telemetry` on `#aim-layer`. Each active bird reports its animation key, current frame, configured phase, playback progress/rate, chosen start frame, and start count. Husky phase and rate are exposed separately alongside its existing animation telemetry.
+
 ## Atlas contract
 
 Each of the 16 species has `public/assets/birds/<species>/atlas.png`, `atlas.json`, and `preview.png`. Normal atlases are 1024×512 with two 4×4 variants and 128-pixel logical frames. The crane atlas is 1536×768 with 192-pixel logical frames. Every JSON file has 32 named frames in `<variant>/<pose>/0` form. Runtime animation maps typed bird states to those names, filters only frames present in that species atlas, and registers Phaser animations once per texture/variant/state.

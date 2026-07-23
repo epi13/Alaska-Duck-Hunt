@@ -20,7 +20,7 @@ export default defineConfig({
         'assets/characters/alaska-husky/preview.png',
       ],
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,json}'],
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,json,webp,ogg}'],
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
       },
       manifest: {
