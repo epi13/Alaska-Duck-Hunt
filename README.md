@@ -16,6 +16,9 @@ Version 1.0 is a playable static PWA. The production flow includes splash, campa
 - Sixteen reference-informed species atlases with two explicit plumage variants, named ground/water/alert/takeoff/flight/landing/hit frames, state-aware hitboxes, dog-triggered flush behavior, and animated Field Guide previews.
 - Twelve original reference-informed 16-bit Alaska location plates, eight region-specific 4×4 habitat prop atlases, and a named 16-frame original working Alaskan Husky atlas with midground, waterline, bird, dog, and foreground depth lanes.
 - Campaign spanning 12 named Alaska habitats, plus Classic Hunt, Endless Migration, Species Challenge, Identification Challenge, Time Trial, Practice Range, Daily Seed, and Custom Hunt.
+- Typed, replayable RoundConfig rules from setup through mode-specific results,
+  including a UTC-stable Daily Seed and fully configurable Practice/Custom
+  builders.
 - Seeded reproducible rounds with species roles, wind, weather, visibility, formations, flock size, speed, altitude, ammunition, and varied flight behaviors.
 - Keyboard, mouse, touch-pointer, fullscreen, abstract controller packets, and a simulated future Zapper pathway.
 - Field-guide entries with identification traits, flight, habitat, similar species, protected lookalikes, broad status context, citations, verification dates, and legal reminders.

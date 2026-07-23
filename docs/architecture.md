@@ -12,6 +12,12 @@ Alaska Duck Hunt is designed as a static, offline-capable TypeScript application
 
 The simulation receives a seed and a serializable `RoundConfig`. It must not read wall-clock time after configuration is created. Presentation may interpolate, but simulation state advances on a fixed step. Random choices use an injected generator; direct `Math.random()` calls are prohibited in simulation code.
 
+`src/core/modes/round-config.ts` owns the JSON-safe contract, validation, and
+pass/fail evaluation. `src/data/mode-configs.ts` owns the nine data-driven mode
+profiles and is the only layer that converts content and player options into a
+complete round. `HuntScene` and `BirdSpawnSystem` consume that result as Phaser
+presentation adapters.
+
 ## Scene and application flow
 
 `boot -> splash -> profile -> menu -> mode/location -> briefing -> hunt -> results -> progression`

@@ -15,29 +15,31 @@ Read the briefing, identify valid targets, aim, fire, reload, avoid protected an
 5. **Identification Challenge** — identify a bird before or during engagement.
 6. **Time Trial** — maximize score before the clock expires.
 7. **Practice Range** — configure pool, speed, flock, weather, ammunition, paths, assist, and game speed.
-8. **Daily Seed** — a deterministic local-date challenge with a local best.
+8. **Daily Seed** — a deterministic UTC-date challenge with a local best.
 9. **Custom Hunt** — select location, pool, weather, time, difficulty, ammunition, and length.
 
 Every mode has an explicit completion or failure condition, results summary, retry, and exit path.
+The implemented runtime rules and persistence keys are documented in
+[`hunt-modes.md`](hunt-modes.md).
 
 ## Campaign route
 
 The campaign introduces mechanics in an authored order while rounds remain seeded:
 
-| Chapter | Location | Primary lesson |
-|---|---|---|
-| 1 | Mat-Su Valley wetlands | Aim, fire, reload, valid targets |
-| 2 | Cook Inlet coastal marsh | Tide-side wind and lookalikes |
-| 3 | River flats during migration | Flocks and lead timing |
-| 4 | Interior boreal forest | Obstruction and flushing birds |
-| 5 | Snow-covered willow country | Snow visibility and grouse identification |
-| 6 | Tundra lake country | Mixed waterfowl pools |
-| 7 | Yukon-Kuskokwim Delta | Long formations and strict target calls |
-| 8 | Copper River Delta | Rain, gusts, and coastal migration |
-| 9 | Southeast rainforest estuary | Low light and heavy rain |
-| 10 | Alpine ptarmigan country | Burst flight and seasonal plumage |
-| 11 | Arctic coastal plain | Fog, glare, and distant silhouettes |
-| 12 | Aleutian shoreline | Finale: crosswinds and a multi-wave storm |
+| Chapter | Location                     | Primary lesson                            |
+| ------- | ---------------------------- | ----------------------------------------- |
+| 1       | Mat-Su Valley wetlands       | Aim, fire, reload, valid targets          |
+| 2       | Cook Inlet coastal marsh     | Tide-side wind and lookalikes             |
+| 3       | River flats during migration | Flocks and lead timing                    |
+| 4       | Interior boreal forest       | Obstruction and flushing birds            |
+| 5       | Snow-covered willow country  | Snow visibility and grouse identification |
+| 6       | Tundra lake country          | Mixed waterfowl pools                     |
+| 7       | Yukon-Kuskokwim Delta        | Long formations and strict target calls   |
+| 8       | Copper River Delta           | Rain, gusts, and coastal migration        |
+| 9       | Southeast rainforest estuary | Low light and heavy rain                  |
+| 10      | Alpine ptarmigan country     | Burst flight and seasonal plumage         |
+| 11      | Arctic coastal plain         | Fog, glare, and distant silhouettes       |
+| 12      | Aleutian shoreline           | Finale: crosswinds and a multi-wave storm |
 
 Each chapter includes three standard hunts and a mastery hunt. Stars come from objective completion, accuracy, and protected-bird avoidance. Progress never requires a perfect score; assist settings do not block advancement.
 
@@ -52,4 +54,3 @@ Unlocks include locations, modes, reticles, field-guide discoveries, and achieve
 ## Tutorial
 
 The tutorial pauses between short lessons: pointer/keyboard aim, fire, reload, read target card, reject a protected lookalike, understand score feedback, then complete a miniature round. It can be replayed or skipped and adapts prompts to the active input provider.
-

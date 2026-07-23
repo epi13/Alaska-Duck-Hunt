@@ -1,13 +1,5 @@
-export type GameMode =
-  | 'campaign'
-  | 'classic'
-  | 'endless'
-  | 'species'
-  | 'identification'
-  | 'time'
-  | 'practice'
-  | 'daily'
-  | 'custom';
+import type { GameMode } from '../core/modes/round-config';
+export type { GameMode } from '../core/modes/round-config';
 export interface Location {
   id: string;
   name: string;

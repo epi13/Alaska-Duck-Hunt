@@ -151,7 +151,30 @@ Last updated: 2026-07-22
 
 ## Latest implementation branch
 
-- `feat/production-start-menu` — production start screen and main-menu redesign using packaged Alaska scene, bird, and Alaskan Husky artwork.
+- `feat/complete-hunt-modes` — typed data-driven hunt modes from setup through
+  deterministic simulation and mode-specific results.
+
+## Complete hunt-mode system (2026-07-22)
+
+- Added the JSON-safe `RoundConfig` contract, validation, pass/fail evaluation,
+  nine distinct mode generators, content-compatible species pools, and stable
+  UTC Daily Seed generation.
+- Replaced the generic mode continuation with Campaign map routing, preserved
+  setup forms, configurable Practice/Custom builders, actual target artwork,
+  and briefings that reflect location, time, ammunition, weather, visibility,
+  penalties, targets, and lookalikes.
+- `HuntScene` now consumes RoundConfig for timers/endless play, ammunition and
+  reload budgets, target/non-target/protected scoring, objectives, visibility,
+  and results. `BirdSpawnSystem` consumes configured pool weights, flock caps,
+  cadence, speed, and endless escalation.
+- Added mode-specific bests, UTC daily-result persistence, Campaign-only
+  progression, same-settings restart, next Classic round, and mode-specific
+  results statistics/actions.
+- Added 15 pure configuration tests and Playwright coverage that reaches a live
+  configured hunt in every mode.
+- Final validation passed: asset validation, `npm run check` with 75/75 Vitest
+  tests and the production PWA build, 37/37 development Playwright tests, and
+  11/11 production mode/setup/results Playwright checks.
 
 ## Start screen and main menu redesign (2026-07-22)
 

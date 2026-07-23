@@ -473,6 +473,39 @@ footer {
   align-items: center;
   text-align: left;
 }
+.mode-page .mode {
+  min-height: 190px;
+  align-items: flex-start;
+}
+.mode-page .mode > div {
+  flex: 1;
+  min-width: 0;
+}
+.mode dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.4rem;
+  margin: 1rem 0 0;
+}
+.mode dl div {
+  min-width: 0;
+  padding-top: 0.5rem;
+  border-top: 1px solid #40545e;
+}
+.mode dt,
+.mode dd {
+  margin: 0;
+  font-size: 0.68rem;
+  letter-spacing: 0.05em;
+}
+.mode dt {
+  color: #7899aa;
+}
+.mode dd {
+  margin-top: 0.2rem;
+  color: #e5d9c0;
+  text-transform: none;
+}
 .mode > span {
   font-family: 'Chakra Petch';
   font-size: 1.5rem;
@@ -496,6 +529,90 @@ footer {
 .mode.selected {
   border-color: var(--amber);
   background: #18394a;
+  box-shadow: inset 5px 0 var(--amber);
+}
+.mode-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.7rem;
+  margin-top: 1.2rem;
+}
+.mode-page > .mode-actions {
+  position: sticky;
+  z-index: 5;
+  bottom: 0;
+  padding: 0.8rem;
+  border-top: 1px solid #66746f;
+  background: #071521f2;
+}
+.mode-setup {
+  max-width: 1000px;
+}
+.setup-summary {
+  max-width: 720px;
+  color: #b5c9ce;
+  font-size: 1.2rem;
+}
+.mode-setup form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  padding: clamp(1rem, 3vw, 2rem);
+  border: 2px solid #66746f;
+  background: #0b202cdd;
+}
+.mode-setup form > label {
+  display: grid;
+  gap: 0.45rem;
+  color: var(--amber);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+.mode-setup select,
+.mode-setup input[type='number'] {
+  min-width: 0;
+  width: 100%;
+  min-height: 48px;
+  padding: 0.65rem;
+  border: 2px solid #718079;
+  border-radius: 0;
+  background: #102b39;
+  color: #f2e7d0;
+  font: inherit;
+}
+.mode-setup select[multiple] {
+  min-height: 170px;
+}
+.mode-setup select[multiple] option {
+  padding: 0.25rem;
+  background: #102b39;
+  color: #f2e7d0;
+}
+.mode-setup select[multiple] option:checked {
+  background: var(--amber) linear-gradient(0deg, var(--amber), var(--amber));
+  color: #071521;
+}
+.mode-setup .wide {
+  grid-column: 1 / -1;
+}
+.mode-setup fieldset {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem;
+  border: 1px solid #596d74;
+  padding: 1rem;
+}
+.mode-setup fieldset label {
+  color: #d9e4e3;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+.config-error {
+  grid-column: 1 / -1;
+  min-height: 1.3rem;
+  margin: 0;
+  color: var(--coral);
 }
 .map-grid {
   display: grid;
@@ -569,6 +686,15 @@ footer {
   text-align: center;
   color: var(--amber);
 }
+.bird-card.production-bird {
+  width: 128px;
+  height: 128px;
+  margin: 0 auto 1rem;
+  background-repeat: no-repeat;
+  background-position: 0 0;
+  background-size: 400% 100%;
+  animation: guide-flap 900ms steps(4) infinite;
+}
 #game {
   position: fixed;
   inset: 0;
@@ -611,6 +737,32 @@ footer {
 }
 .objective {
   font-size: 1.4rem;
+  max-width: min(46vw, 620px);
+  text-align: center;
+}
+.objective b,
+.objective span,
+.objective small {
+  display: block;
+}
+.objective span {
+  margin-top: 0.2rem;
+  color: var(--amber);
+}
+.objective small {
+  margin-top: 0.25rem;
+  color: #b7cbd1;
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  text-transform: none;
+}
+.objective em {
+  display: block;
+  margin-top: 0.35rem;
+  color: var(--green);
+  font-size: 0.68rem;
+  font-style: normal;
+  letter-spacing: 0.05em;
 }
 .ammo {
   position: fixed;
@@ -677,6 +829,15 @@ footer {
   gap: 2px;
   background: #53616b;
   margin: 2rem 0;
+}
+.mode-results {
+  max-width: 1050px;
+}
+.result-requirements {
+  padding: 0.8rem;
+  border-left: 4px solid var(--coral);
+  background: #2c1b1c;
+  color: #f0c6bd;
 }
 .result-grid div {
   background: #102635;
@@ -794,6 +955,15 @@ a {
   .guide-grid {
     grid-template-columns: 1fr;
   }
+  .mode-setup form {
+    grid-template-columns: 1fr;
+  }
+  .mode-setup .wide {
+    grid-column: 1;
+  }
+  .mode-setup fieldset {
+    grid-template-columns: 1fr;
+  }
   .brief {
     grid-template-columns: 1fr;
     padding: 2rem 1rem;
@@ -818,6 +988,10 @@ a {
   }
   .objective {
     font-size: 0.8rem;
+    max-width: 48vw;
+  }
+  .objective small {
+    display: none;
   }
   .ammo {
     bottom: max(12px, env(safe-area-inset-bottom));
@@ -1060,7 +1234,8 @@ a {
 }
 .reduce-motion .front-bird,
 .reduce-motion .front-bird i,
-.reduce-motion .front-husky {
+.reduce-motion .front-husky,
+.reduce-motion .bird-card.production-bird {
   animation: none;
 }
 .reduce-motion .bird-near {

@@ -29,11 +29,30 @@ async function enterMenu(page: Page) {
 }
 
 async function startHunt(page: Page, locationIndex = 2) {
-  await page.evaluate((index) => sessionStorage.setItem('location', String(index)), locationIndex);
   const frontMode = page.locator('[data-front-go="modes"]').first();
   if (await frontMode.isVisible().catch(() => false)) await frontMode.click();
   else await page.locator('[data-go="modes"]').first().click();
+  await page.locator('[data-mode="classic"]').click();
   await page.locator('#brief').click();
+  await page
+    .locator('[name="locationId"]')
+    .selectOption(
+      [
+        'matsu',
+        'cook',
+        'copper',
+        'yk',
+        'interior',
+        'arctic',
+        'aleutian',
+        'southeast',
+        'tundra',
+        'alpine',
+        'willow',
+        'river',
+      ][locationIndex] ?? 'copper',
+    );
+  await page.locator('#mode-form button[type="submit"]').click();
   await page.locator('#start-hunt').click();
   await expect(page.locator('canvas')).toBeVisible();
   await expect(page.locator('#aim-layer')).toHaveAttribute('data-shots', '0');
@@ -63,6 +82,37 @@ async function startHunt(page: Page, locationIndex = 2) {
   await expect(page.locator('#aim-layer')).toHaveAttribute('data-scene-layers', '4');
   await expect(page.locator('#aim-layer')).toHaveAttribute('data-dog-layer', 'ground');
   await expect(page.locator('#aim-layer')).toHaveAttribute('data-dog-character', 'alaska-husky');
+}
+
+async function startModeHunt(
+  page: Page,
+  mode:
+    | 'campaign'
+    | 'classic'
+    | 'endless'
+    | 'species'
+    | 'identification'
+    | 'time'
+    | 'practice'
+    | 'daily'
+    | 'custom',
+) {
+  await page.locator('[data-front-go="modes"]').first().click();
+  await page.locator(`[data-mode="${mode}"]`).click();
+  await page.locator('#brief').click();
+  if (mode === 'campaign') await page.locator('[data-location="0"]').click();
+  else if (mode !== 'daily') await page.locator('#mode-form button[type="submit"]').click();
+  await expect(page.locator('.brief')).toHaveAttribute('data-round-mode', mode);
+  await expect(page.locator('.bird-card.production-bird')).toBeVisible();
+  await page.locator('#start-hunt').click();
+  await expect(page.locator('canvas')).toBeVisible();
+  await expect(page.locator('#aim-layer')).toHaveAttribute('data-round-mode', mode);
+  const config = JSON.parse(
+    (await page.locator('#aim-layer').getAttribute('data-round-config')) ?? '{}',
+  ) as { mode?: string; seed?: string; targetSpeciesIds?: string[] };
+  expect(config.mode).toBe(mode);
+  expect(config.seed).toBeTruthy();
+  expect(config.targetSpeciesIds?.length).toBeGreaterThan(0);
 }
 
 test('serves transformed modules with JavaScript MIME and loads the menu', async ({
@@ -191,6 +241,71 @@ test('main menu stays uncluttered at 390px and exposes all six destinations', as
     .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
     .toBe(true);
   await page.screenshot({ path: testInfo.outputPath('main-menu-phone-portrait.png') });
+});
+
+for (const mode of [
+  'campaign',
+  'classic',
+  'endless',
+  'species',
+  'identification',
+  'time',
+  'practice',
+  'daily',
+  'custom',
+] as const) {
+  test(`${mode} mode reaches its own playable RoundConfig`, async ({ page }) => {
+    await startModeHunt(page, mode);
+    if (mode === 'endless') {
+      await expect(page.locator('#time')).toContainText('WAVE');
+      await page.keyboard.press('Escape');
+      await expect(page.getByText('HUNT PAUSED')).toBeVisible();
+      await page.getByRole('button', { name: 'Return to menu' }).click();
+      await expect(page.locator('.main-menu-screen')).toBeVisible();
+    }
+  });
+}
+
+test('custom hunt validates and preserves selected options across back navigation', async ({
+  page,
+}) => {
+  await page.locator('[data-front-go="modes"]').first().click();
+  await page.locator('[data-mode="custom"]').click();
+  await page.locator('#brief').click();
+  await page.locator('[name="locationId"]').selectOption('arctic');
+  await page.locator('[name="durationSeconds"]').selectOption('180');
+  await page.locator('[name="weather"]').selectOption('snow');
+  await page.locator('[name="magazineSize"]').fill('12');
+  await page.locator('[name="aimAssist"]').check();
+  await page.locator('#setup-back').click();
+  await page.locator('#brief').click();
+  await expect(page.locator('[name="locationId"]')).toHaveValue('arctic');
+  await expect(page.locator('[name="durationSeconds"]')).toHaveValue('180');
+  await expect(page.locator('[name="weather"]')).toHaveValue('snow');
+  await expect(page.locator('[name="magazineSize"]')).toHaveValue('12');
+  await expect(page.locator('[name="aimAssist"]')).toBeChecked();
+  await page.locator('#mode-form button[type="submit"]').click();
+  await expect(page.getByText('180 seconds', { exact: true })).toBeVisible();
+  await expect(page.getByText(/SNOW weather/i)).toBeVisible();
+});
+
+test('classic ammunition exhaustion produces mode-specific results and actions', async ({
+  page,
+}) => {
+  await startModeHunt(page, 'classic');
+  for (let magazine = 0; magazine < 3; magazine += 1) {
+    for (let shot = 0; shot < 5; shot += 1) await page.keyboard.press('Space');
+    if (magazine < 2) await page.keyboard.press('r');
+  }
+  await page.keyboard.press('Space');
+  await expect(page.locator('.mode-results')).toHaveAttribute('data-result-mode', 'classic');
+  await expect(page.getByText('SHOT ACCURACY', { exact: true })).toBeVisible();
+  await expect(page.getByText('IDENTIFICATION', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Next Classic Round' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Change Settings' })).toBeVisible();
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem('adh-mode-best-classic')))
+    .not.toBeNull();
 });
 
 test('menu controls never fire a gameplay shot', async ({ page }) => {
