@@ -22,7 +22,7 @@ jobs:
             echo 'dist/index.html still references the Vite source entrypoint'
             exit 1
           fi
-          grep -Eq 'src="\\./assets/[^"]+\\.js"' dist/index.html
+          grep -Eq 'src="\./assets/[^"]+\.js"' dist/index.html
           test -f dist/assets/icon.svg
       - uses: actions/configure-pages@v5
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
