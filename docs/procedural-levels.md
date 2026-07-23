@@ -6,7 +6,9 @@ Generation order is: validate configuration, choose environment variation, const
 
 Supported paths include straight crossing, gentle arc, climb, dive, S-turn, panic turn, circling, flock separation, wind drift, sudden acceleration, low marsh flight, high migration, flushing upland flight, and ptarmigan burst flight. Difficulty scales reaction window, speed, path complexity, visibility, flock ambiguity, and ammunition pressure without changing input sensitivity.
 
-Validation rejects impossible rounds, overlapping protected-target silhouettes at beginner difficulty, empty pools, insufficient ammunition, and spawns hidden for their full lifetime. Daily Seed derives a locale-independent `YYYY-MM-DD` seed and records the content version so later data changes are transparent.
+Validation rejects empty target pools, invalid protected-target overlap, and
+unsafe duration, ammunition, flock, cadence, speed, or visibility limits. Daily
+Seed derives `YYYY-MM-DD` from the UTC calendar and stores results under that UTC
+date, so locale and daylight-saving changes cannot alter a challenge.
 
 Developer mode may display seed, streams, hitboxes, paths, object counts, and frame timing; override weather, wind, speed, and species; skip rounds; simulate scores/controller events; and reset procedural state. It is off by default and enabled by a documented development flag.
-

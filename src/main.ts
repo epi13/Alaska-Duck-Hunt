@@ -5,12 +5,42 @@ import { birdSpriteBySpecies } from './data/bird-sprites';
 import { birdBehaviorBySpecies } from './data/bird-behaviors';
 import { sceneMapByLocation } from './data/scene-maps';
 import { scenePropLayoutByLocation } from './data/scene-props';
+import { campaignMissions } from './data/campaign-missions';
 import { AudioManager } from './services/audio';
 import { BrowserInputProvider, type InputEvent } from './core/input';
 import type { BirdFamily } from './core/birds/bird-placement';
 import type { BirdSurface } from './core/birds/bird-plan';
 import type { AudioBus } from './core/audio/audio-bus';
 import type { AudioTelemetry, SpatialAudioInput } from './services/audio';
+import {
+  createRoundConfig,
+  modeBestStorageKey,
+  modePresentations,
+  speciesForLocation,
+} from './data/mode-configs';
+import {
+  type RoundConfig,
+  type RoundPlayerOptions,
+  type RoundResultStats,
+} from './core/modes/round-config';
+import {
+  applyCampaignResult,
+  campaignCurrentLocation,
+  campaignMission,
+  campaignNextLocation,
+  canPlayCampaignLocation,
+  CAMPAIGN_LOCATION_IDS,
+  startCampaign,
+  type CampaignLocationId,
+} from './core/campaign/campaign-progression';
+import {
+  createDefaultSave,
+  migrateLegacyCampaignIndex,
+  parseSave,
+  SAVE_STORAGE_KEY,
+  serializeSave,
+  type SaveData,
+} from './core/save';
 import './styles/main.css';
 
 const root = document.querySelector<HTMLDivElement>('#app')!;
@@ -61,7 +91,53 @@ window.addEventListener('adh-audio-state', ((
 let game: Phaser.Game | undefined;
 let browserInput: BrowserInputProvider | undefined;
 let selectedMode: GameMode = 'campaign';
-type FrontDoorPage = 'campaign' | 'modes' | 'guide' | 'settings' | 'stats' | 'controller';
+let currentRoundConfig: RoundConfig | undefined;
+const modeOptions = loadModeOptions();
+let saveData = loadSaveData();
+let debugRoundCompletionHandler: EventListener | undefined;
+type FrontDoorPage =
+  | 'campaign'
+  | 'campaign-continue'
+  | 'modes'
+  | 'guide'
+  | 'settings'
+  | 'stats'
+  | 'controller';
+
+function loadSaveData(): SaveData {
+  const serialized = localStorage.getItem(SAVE_STORAGE_KEY);
+  let save = serialized ? parseSave(serialized) : createDefaultSave();
+  if (!serialized)
+    save = migrateLegacyCampaignIndex(
+      save,
+      localStorage.getItem('adh-next-location'),
+      localStorage.getItem('adh-campaign-started'),
+    );
+  localStorage.setItem(SAVE_STORAGE_KEY, serializeSave(save));
+  return save;
+}
+
+function persistSave() {
+  localStorage.setItem(SAVE_STORAGE_KEY, serializeSave(saveData));
+}
+
+function loadModeOptions(): Partial<Record<GameMode, RoundPlayerOptions>> {
+  try {
+    return JSON.parse(sessionStorage.getItem('adh-mode-options') ?? '{}') as Partial<
+      Record<GameMode, RoundPlayerOptions>
+    >;
+  } catch {
+    return {};
+  }
+}
+
+function saveModeOptions() {
+  sessionStorage.setItem('adh-mode-options', JSON.stringify(modeOptions));
+}
+
+function speciesName(id: string) {
+  return species.find((entry) => entry.id === id)?.common ?? id;
+}
 
 function menuIcon(name: 'campaign' | 'modes' | 'guide' | 'records' | 'settings' | 'controller') {
   const paths = {
@@ -79,18 +155,20 @@ function menuIcon(name: 'campaign' | 'modes' | 'guide' | 'records' | 'settings' 
 }
 
 function playerProgress() {
-  const nextLocationIndex = Math.min(
-    locations.length - 1,
-    Math.max(0, Number(localStorage.getItem('adh-next-location') ?? 0)),
-  );
+  const currentLocationId =
+    campaignCurrentLocation(saveData.campaign) ??
+    CAMPAIGN_LOCATION_IDS[CAMPAIGN_LOCATION_IDS.length - 1]!;
+  const nextLocationIndex = CAMPAIGN_LOCATION_IDS.indexOf(currentLocationId);
   return {
-    campaignStarted: localStorage.getItem('adh-campaign-started') === 'true',
+    campaignStarted: saveData.campaign.started,
     nextLocationIndex,
-    nextLocation: locations[nextLocationIndex]!,
-    hunts: Math.max(0, Number(localStorage.getItem('adh-hunts-completed') ?? 0)),
-    bestScore: Math.max(0, Number(localStorage.getItem('adh-best-score') ?? 0)),
-    bestAccuracy: Math.max(0, Number(localStorage.getItem('adh-best-accuracy') ?? 0)),
-    totalHits: Math.max(0, Number(localStorage.getItem('adh-total-hits') ?? 0)),
+    nextLocation: locations.find(({ id }) => id === currentLocationId) ?? locations[0]!,
+    completedLocations: saveData.campaign.completedLocations.length,
+    campaignComplete: saveData.campaign.campaignComplete,
+    hunts: saveData.stats.huntsCompleted,
+    bestScore: Math.max(0, ...Object.values(saveData.records.highScores)),
+    bestAccuracy: saveData.stats.bestAccuracy,
+    totalHits: saveData.stats.validHits,
     loggedSpecies: new Set(
       JSON.parse(localStorage.getItem('adh-species-logged') ?? '[]') as string[],
     ).size,
@@ -108,7 +186,7 @@ function wildlifeLayers() {
 
 function progressStrip(progress: ReturnType<typeof playerProgress>) {
   return `<div class="front-progress" aria-label="Campaign progress">
-    <div class="next-location"><img src="/assets/ui/start-copper-river.webp" alt=""><span><b>NEXT: ${progress.nextLocation.name}</b><small>${progress.nextLocationIndex} / ${locations.length} LOCATIONS CLEARED</small></span></div>
+    <div class="next-location"><img src="/assets/ui/start-copper-river.webp" alt=""><span><b>${progress.campaignComplete ? 'CAMPAIGN COMPLETE' : `NEXT: ${progress.nextLocation.name}`}</b><small>${progress.completedLocations} / ${locations.length} LOCATIONS CLEARED</small></span></div>
     <div><b>${species.length} SPECIES IN FIELD GUIDE</b><small>${progress.loggedSpecies} identified in completed hunts</small></div>
     <div class="offline-status"><span aria-hidden="true"></span><b>OFFLINE READY</b></div>
     <small class="front-legal">ORIGINAL ART & AUDIO • FICTIONAL GAME RULES • v1.0</small>
@@ -117,15 +195,18 @@ function progressStrip(progress: ReturnType<typeof playerProgress>) {
 
 function shell(content: string) {
   root.innerHTML = `<div class="app-shell"><header><button class="brand" data-go="menu"><img src="assets/icon.svg" alt=""><span>ALASKA <b>DUCK HUNT</b></span></button><div class="header-actions"><button data-go="guide">FIELD GUIDE</button><button data-go="settings">SETTINGS</button></div></header><main>${content}</main><footer><span>ORIGINAL ALASKAN ARCADE HUNT</span><span>OFFLINE READY • v1.0</span></footer></div>`;
+  window.scrollTo({ top: 0, left: 0 });
   root.classList.toggle('reduce-motion', localStorage.getItem('adh-Reduced motion') === 'true');
   bindNav();
 }
 
 function routePage(page: FrontDoorPage) {
   if (page === 'campaign') {
-    localStorage.setItem('adh-campaign-started', 'true');
+    saveData = { ...saveData, campaign: startCampaign(saveData.campaign) };
+    persistSave();
     campaign();
-  } else if (page === 'modes') modeSelect();
+  } else if (page === 'campaign-continue') continueCampaign();
+  else if (page === 'modes') modeSelect();
   else if (page === 'guide') guide();
   else if (page === 'settings') settings();
   else if (page === 'stats') stats();
@@ -178,6 +259,7 @@ function bindNav() {
 function splash() {
   const progress = playerProgress();
   const campaignAction = progress.campaignStarted ? 'CONTINUE CAMPAIGN' : 'START CAMPAIGN';
+  const campaignRoute = progress.campaignStarted ? 'campaign-continue' : 'campaign';
   root.innerHTML = `<section class="front-door start-screen" aria-labelledby="start-title">
     ${wildlifeLayers()}
     <div class="front-panel pixel-frame">
@@ -185,7 +267,7 @@ function splash() {
       <h1 id="start-title"><span>ALASKA</span><strong>DUCK HUNT</strong></h1>
       <p class="front-subtitle">IDENTIFY THE FLOCK. HUNT THE FLYWAY.</p>
       <div class="front-actions">
-        <button id="enter" class="primary large" data-front-go="campaign" data-controller-action="confirm">${campaignAction}</button>
+        <button id="enter" class="primary large" data-front-go="${campaignRoute}" data-controller-action="confirm">${campaignAction}</button>
         <button class="secondary-action" data-front-go="modes">CHOOSE HUNT MODE</button>
         <div class="front-quick-actions">
           <button data-front-go="guide">${menuIcon('guide')} FIELD GUIDE</button>
@@ -203,12 +285,13 @@ function splash() {
 function menu() {
   const progress = playerProgress();
   const campaignAction = progress.campaignStarted ? 'CONTINUE CAMPAIGN' : 'START CAMPAIGN';
+  const campaignRoute = progress.campaignStarted ? 'campaign-continue' : 'campaign';
   root.innerHTML = `<section class="front-door main-menu-screen" aria-labelledby="menu-title">
     ${wildlifeLayers()}
     <div class="front-panel menu-panel pixel-frame">
       <h1 id="menu-title"><span>ALASKA</span><strong>DUCK HUNT</strong></h1>
       <p class="front-subtitle">KNOW THE SILHOUETTE. FOLLOW THE FLYWAY.</p>
-      <button class="primary large" data-front-go="campaign">${campaignAction}</button>
+      <button class="primary large" data-front-go="${campaignRoute}">${campaignAction}</button>
       <button class="secondary-action" data-front-go="modes">CHOOSE HUNT MODE</button>
     </div>
     <nav class="front-destinations" aria-label="Main menu">
@@ -227,7 +310,14 @@ function menu() {
 }
 function modeSelect() {
   shell(
-    `<section class="page"><div class="section-title"><p>SELECT OPERATION</p><h1>HUNT MODES</h1></div><div class="mode-list">${modes.map((m, i) => `<button class="mode ${m.id === selectedMode ? 'selected' : ''}" data-mode="${m.id}"><span>0${i + 1}</span><div><b>${m.name}</b><small>${m.description}</small></div><i>→</i></button>`).join('')}</div><button class="primary" id="brief">CONTINUE TO BRIEFING</button></section>`,
+    `<section class="page mode-page"><div class="section-title"><p>SELECT OPERATION</p><h1>HUNT MODES</h1></div><div class="mode-list">${modePresentations
+      .map((mode, index) => {
+        const best = Number(localStorage.getItem(modeBestStorageKey(mode.id)) ?? 0);
+        return `<button class="mode ${mode.id === selectedMode ? 'selected' : ''}" data-mode="${mode.id}" aria-pressed="${mode.id === selectedMode}"><span>0${index + 1}</span><div><b>${mode.name}</b><small>${mode.rulesSummary}</small><dl><div><dt>DURATION</dt><dd>${mode.duration}</dd></div><div><dt>OBJECTIVE</dt><dd>${mode.objectiveStyle}</dd></div><div><dt>BEST</dt><dd>${best.toLocaleString()}</dd></div></dl></div><i aria-hidden="true">→</i></button>`;
+      })
+      .join(
+        '',
+      )}</div><div class="mode-actions"><button data-go="menu">BACK</button><button class="primary" id="brief">CONTINUE WITH ${modePresentations.find(({ id }) => id === selectedMode)?.name.toUpperCase()}</button></div></section>`,
   );
   root.querySelectorAll<HTMLElement>('[data-mode]').forEach(
     (b) =>
@@ -236,47 +326,234 @@ function modeSelect() {
         modeSelect();
       }),
   );
-  document.querySelector('#brief')?.addEventListener('click', briefing);
+  document.querySelector('#brief')?.addEventListener('click', () => {
+    if (selectedMode === 'campaign') campaign();
+    else if (selectedMode === 'daily') {
+      currentRoundConfig = createRoundConfig('daily', {}, new Date());
+      briefing();
+    } else modeSetup(selectedMode);
+  });
+  bindNav();
+}
+
+function modeSetup(mode: Exclude<GameMode, 'campaign' | 'daily'>) {
+  const saved = modeOptions[mode] ?? {};
+  const defaultConfig = createRoundConfig(mode, saved);
+  const selectedLocation = saved.locationId ?? defaultConfig.locationId;
+  const availableSpecies = speciesForLocation(selectedLocation);
+  const selectedTargets = saved.targetSpeciesIds ?? defaultConfig.targetSpeciesIds;
+  const isBuilder = mode === 'practice' || mode === 'custom';
+  const chooseSpecies = ['species', 'identification', 'practice', 'custom'].includes(mode);
+  const chooseDuration = ['time', 'practice', 'custom'].includes(mode);
+  shell(
+    `<section class="page mode-setup" data-mode-setup="${mode}"><div class="section-title"><p>CONFIGURE OPERATION</p><h1>${modePresentations.find(({ id }) => id === mode)?.name}</h1></div>
+      <p class="setup-summary">${modePresentations.find(({ id }) => id === mode)?.rulesSummary}</p>
+      <form id="mode-form">
+        <label>LOCATION<select name="locationId">${locations.map((location) => `<option value="${location.id}" ${location.id === selectedLocation ? 'selected' : ''}>${location.name}</option>`).join('')}</select></label>
+        ${
+          chooseSpecies
+            ? mode === 'custom'
+              ? `<label class="wide">TARGET POOL<select name="targetSpeciesIds" multiple size="6">${availableSpecies.map((id) => `<option value="${id}" ${selectedTargets.includes(id) ? 'selected' : ''}>${speciesName(id)}</option>`).join('')}</select><small>Select one or more compatible species.</small></label>`
+              : `<label>TARGET SPECIES<select name="targetSpeciesId">${availableSpecies.map((id) => `<option value="${id}" ${selectedTargets[0] === id ? 'selected' : ''}>${speciesName(id)}</option>`).join('')}</select></label>`
+            : ''
+        }
+        ${
+          chooseDuration
+            ? `<label>DURATION<select name="durationSeconds">${[30, 45, 60, 90, 120, 180].map((value) => `<option value="${value}" ${value === (saved.durationSeconds ?? defaultConfig.durationSeconds) ? 'selected' : ''}>${value} seconds</option>`).join('')}</select></label>`
+            : ''
+        }
+        ${
+          mode === 'endless' || isBuilder
+            ? `<label>DIFFICULTY<select name="difficulty">${[1, 2, 3, 4, 5].map((value) => `<option value="${value}" ${value === (saved.difficulty ?? 2) ? 'selected' : ''}>${value} / 5</option>`).join('')}</select></label>`
+            : ''
+        }
+        ${
+          isBuilder
+            ? `<label>WEATHER<select name="weather">${['clear', 'rain', 'snow', 'fog', 'wind'].map((value) => `<option value="${value}" ${value === (saved.weather ?? defaultConfig.weather) ? 'selected' : ''}>${value}</option>`).join('')}</select></label>
+              <label>BIRD SPEED<select name="speedMultiplier">${[0.75, 1, 1.25, 1.5].map((value) => `<option value="${value}" ${value === (saved.speedMultiplier ?? 1) ? 'selected' : ''}>${value}×</option>`).join('')}</select></label>
+              <label>MAGAZINE SIZE<input name="magazineSize" type="number" min="1" max="20" value="${saved.magazineSize ?? defaultConfig.ammunition.magazineSize}"></label>
+              <label>FLOCK CAP<input name="flockCap" type="number" min="1" max="30" value="${saved.flockCap ?? defaultConfig.flockCap}"></label>
+              <label>RELOADS<select name="reloads">${[0, 1, 2, 3, 5].map((value) => `<option value="${value}" ${value === (saved.reloads ?? defaultConfig.ammunition.reloads) ? 'selected' : ''}>${value}</option>`).join('')}<option value="unlimited" ${saved.reloads === 'unlimited' || defaultConfig.ammunition.reloads === 'unlimited' ? 'selected' : ''}>Unlimited</option></select></label>
+              <fieldset class="wide"><legend>ASSISTS & SAFETY</legend><label><input name="aimAssist" type="checkbox" ${saved.assists?.aimAssist ? 'checked' : ''}> Aim assist</label><label><input name="identificationLabels" type="checkbox" ${saved.assists?.identificationLabels ? 'checked' : ''}> Identification labels</label><label><input name="trajectoryGuide" type="checkbox" ${saved.assists?.trajectoryGuide ? 'checked' : ''}> Trajectory guide</label><label><input name="includeProtected" type="checkbox" ${saved.includeProtected ? 'checked' : ''}> Include protected lookalikes</label></fieldset>`
+            : ''
+        }
+        <p id="config-error" class="config-error" role="alert"></p>
+        <div class="mode-actions wide"><button type="button" id="setup-back">BACK TO MODES</button>${isBuilder ? '<button type="button" id="reset-defaults">RESET DEFAULTS</button>' : ''}<button class="primary" type="submit">REVIEW BRIEFING</button></div>
+      </form>
+    </section>`,
+  );
+  const form = document.querySelector<HTMLFormElement>('#mode-form')!;
+  const readOptions = () => {
+    const data = new FormData(form);
+    const reloadValue = String(data.get('reloads') ?? defaultConfig.ammunition.reloads);
+    const targetSpeciesIds =
+      mode === 'custom'
+        ? data.getAll('targetSpeciesIds').map(String)
+        : chooseSpecies
+          ? [String(data.get('targetSpeciesId'))]
+          : undefined;
+    return {
+      locationId: String(data.get('locationId')),
+      targetSpeciesIds,
+      durationSeconds: data.has('durationSeconds')
+        ? Number(data.get('durationSeconds'))
+        : undefined,
+      difficulty: data.has('difficulty') ? Number(data.get('difficulty')) : undefined,
+      speedMultiplier: data.has('speedMultiplier')
+        ? Number(data.get('speedMultiplier'))
+        : undefined,
+      weather: data.has('weather')
+        ? (String(data.get('weather')) as RoundPlayerOptions['weather'])
+        : undefined,
+      magazineSize: data.has('magazineSize') ? Number(data.get('magazineSize')) : undefined,
+      flockCap: data.has('flockCap') ? Number(data.get('flockCap')) : undefined,
+      reloads: reloadValue === 'unlimited' ? 'unlimited' : Number(reloadValue),
+      includeProtected: data.get('includeProtected') === 'on',
+      assists: {
+        aimAssist: data.get('aimAssist') === 'on',
+        identificationLabels: data.get('identificationLabels') === 'on',
+        trajectoryGuide: data.get('trajectoryGuide') === 'on',
+      },
+    } satisfies RoundPlayerOptions;
+  };
+  form.addEventListener('change', (event) => {
+    modeOptions[mode] = readOptions();
+    saveModeOptions();
+    const changed = event.target as HTMLInputElement | HTMLSelectElement;
+    if (changed.name === 'locationId' && chooseSpecies) modeSetup(mode);
+  });
+  form.addEventListener('submit', (event) => {
+    event.preventDefault();
+    try {
+      modeOptions[mode] = readOptions();
+      saveModeOptions();
+      currentRoundConfig = createRoundConfig(mode, modeOptions[mode]);
+      briefing();
+    } catch (error) {
+      setText('config-error', error instanceof Error ? error.message : 'Invalid configuration.');
+    }
+  });
+  document.querySelector('#setup-back')?.addEventListener('click', modeSelect);
+  document.querySelector('#reset-defaults')?.addEventListener('click', () => {
+    delete modeOptions[mode];
+    saveModeOptions();
+    modeSetup(mode);
+  });
 }
 function campaign() {
-  const progress = playerProgress();
+  const currentLocationId = campaignCurrentLocation(saveData.campaign);
   shell(
-    `<section class="page campaign"><div class="section-title"><p>CAMPAIGN • NORTHBOUND</p><h1>ALASKA FLYWAYS</h1></div><div class="map-grid">${locations.map((l, i) => `<button class="location ${i > progress.nextLocationIndex ? 'locked' : ''} ${i === progress.nextLocationIndex ? 'current' : ''}" data-location="${i}" ${i > progress.nextLocationIndex ? 'aria-disabled="true"' : ''}><span>${String(i + 1).padStart(2, '0')}</span><b>${l.name}</b><small>${l.region} • ${l.habitat}${i === progress.nextLocationIndex ? ' • NEXT' : ''}</small></button>`).join('')}</div><p class="hint">Complete accuracy and identification objectives to unlock the northbound route.</p></section>`,
+    `<section class="page campaign"><div class="section-title"><p>CAMPAIGN • NORTHBOUND</p><h1>ALASKA FLYWAYS</h1></div><div class="map-grid">${locations
+      .map((location, index) => {
+        const id = location.id as CampaignLocationId;
+        const unlocked = canPlayCampaignLocation(saveData.campaign, id);
+        const completed = saveData.campaign.completedLocations.includes(id);
+        const current = id === currentLocationId;
+        const mission = campaignMission(campaignMissions, id);
+        const best = saveData.campaign.bestResults[id];
+        return `<button class="location ${unlocked ? 'unlocked' : 'locked'} ${completed ? 'completed' : ''} ${current ? 'current' : ''}" data-location="${index}" data-location-id="${id}" ${unlocked ? '' : 'disabled aria-disabled="true"'}><span>${String(index + 1).padStart(2, '0')}</span><b>${location.name}</b><small>${location.region} • ${completed ? `COMPLETED • BEST ${best?.rating ?? 'C'}` : current ? 'CURRENT MISSION' : unlocked ? 'AVAILABLE' : 'LOCKED'}</small><em>${mission.objective}</em></button>`;
+      })
+      .join('')}</div><p class="hint">${saveData.campaign.campaignComplete ? 'Campaign complete. Every location remains available for replay.' : 'Complete each fictional arcade objective to unlock the next area.'}</p><p class="disclaimer">Campaign goals are fictional arcade challenges and do not represent real hunting regulations.</p></section>`,
   );
   root.querySelectorAll<HTMLElement>('[data-location]').forEach(
     (b) =>
       (b.onclick = () => {
-        if (!b.classList.contains('locked')) {
-          sessionStorage.setItem('location', b.dataset.location ?? '2');
-          briefing();
-        }
+        const id = b.dataset.locationId;
+        if (id && canPlayCampaignLocation(saveData.campaign, id))
+          openCampaignLocation(id as CampaignLocationId);
       }),
   );
 }
+
+function openCampaignLocation(locationId: CampaignLocationId) {
+  if (!canPlayCampaignLocation(saveData.campaign, locationId)) return;
+  const index = CAMPAIGN_LOCATION_IDS.indexOf(locationId);
+  sessionStorage.setItem('location', String(index));
+  modeOptions.campaign = { locationId, roundIndex: index };
+  saveModeOptions();
+  currentRoundConfig = createRoundConfig('campaign', modeOptions.campaign);
+  briefing();
+}
+
+function continueCampaign() {
+  saveData = { ...saveData, campaign: startCampaign(saveData.campaign) };
+  persistSave();
+  const locationId = campaignCurrentLocation(saveData.campaign);
+  if (locationId) openCampaignLocation(locationId);
+  else campaign();
+}
 function briefing() {
-  const l = locations[Number(sessionStorage.getItem('location') ?? 2)] ?? locations[2]!;
+  const config =
+    currentRoundConfig ??
+    createRoundConfig(selectedMode === 'campaign' ? 'campaign' : selectedMode, {
+      roundIndex: Number(sessionStorage.getItem('location') ?? 0),
+    });
+  currentRoundConfig = config;
+  if (import.meta.env.DEV) {
+    if (debugRoundCompletionHandler)
+      window.removeEventListener('adh-debug-complete-round', debugRoundCompletionHandler);
+    debugRoundCompletionHandler = ((event: CustomEvent<RoundResultStats>) => {
+      results({
+        ...event.detail,
+        passed: false,
+        failures: [],
+        endReason: 'objective',
+        config,
+      });
+    }) as EventListener;
+    window.addEventListener('adh-debug-complete-round', debugRoundCompletionHandler, {
+      once: true,
+    });
+  }
+  sessionStorage.setItem('adh-round-config', JSON.stringify(config));
+  const l = locations.find(({ id }) => id === config.locationId) ?? locations[0]!;
+  const target = species.find(({ id }) => id === config.targetSpeciesIds[0]) ?? species[0]!;
+  const targetArt = birdSpriteBySpecies.get(target.id);
+  const timeLabel = config.endless ? 'ENDLESS' : `${config.durationSeconds} seconds`;
+  const reloadLabel =
+    config.ammunition.reloads === 'unlimited'
+      ? 'unlimited reloads'
+      : `${config.ammunition.reloads} reloads`;
+  const protectedNames = config.protectedLookalikes.speciesIds.map(speciesName);
+  const nonTargetNames = config.spawnSpecies
+    .filter(({ role }) => role === 'non-target')
+    .map(({ speciesId }) => speciesName(speciesId));
   shell(
-    `<section class="brief"><div><p>PRE-HUNT BRIEFING</p><h1>${l.name}</h1><h2>${modes.find((m) => m.id === selectedMode)?.name}</h2><p>${l.habitat}. Expect ${l.hazards.join(' and ')} with ${l.ambience}.</p><dl><div><dt>OBJECTIVE</dt><dd>Score 1,200+ and maintain 45% accuracy</dd></div><div><dt>FIELD RULE</dt><dd>Identify silhouettes. Protected birds carry a severe penalty.</dd></div><div><dt>AMMUNITION</dt><dd>5 fictional game shells • R to reload</dd></div></dl><button class="primary large" id="start-hunt">START HUNT</button></div><aside><h3>TARGET PROFILE</h3><div class="bird-card">⌁</div><b>NORTHERN PINTAIL</b><p>Long neck, pointed tail, swift direct flight.</p><small>Game limits are fictional and are not real regulations.</small></aside></section>`,
+    `<section class="brief" data-round-mode="${config.mode}"><div><p>PRE-HUNT BRIEFING${config.challengeDate ? ` • UTC ${config.challengeDate}` : ''}</p><h1>${l.name}</h1><h2>${modePresentations.find(({ id }) => id === config.mode)?.name}</h2><p>${l.habitat}. ${config.weather.toUpperCase()} weather • ${Math.round(config.visibility * 100)}% visibility.</p><dl><div><dt>OBJECTIVE</dt><dd>${config.objective.description}</dd></div><div><dt>TARGETS</dt><dd>${config.targetSpeciesIds.map(speciesName).join(', ')}</dd></div><div><dt>TIME</dt><dd>${timeLabel}</dd></div><div><dt>AMMUNITION</dt><dd>${config.ammunition.magazineSize} shells • ${reloadLabel}</dd></div><div><dt>PENALTIES</dt><dd>Miss −${config.scoring.missPenalty} • Non-target −${config.scoring.nonTargetPenalty} • Protected −${config.scoring.protectedPenalty}</dd></div><div><dt>LOOKALIKES</dt><dd>${[...nonTargetNames, ...protectedNames].join(', ') || 'None included in this round'}</dd></div></dl><div class="mode-actions"><button id="brief-back">BACK</button><button class="primary large" id="start-hunt">START HUNT</button></div><p class="disclaimer">This game uses fictional scoring, ammunition, seasons, and limits. It does not represent real hunting rules.</p></div><aside><h3>TARGET PROFILE</h3>${targetArt ? `<div class="bird-card production-bird" role="img" aria-label="${target.common}" style="background-image:url('/${targetArt.previewPath}')"></div>` : ''}<b>${target.common.toUpperCase()}</b><p>${target.traits}</p><small>${target.flight}</small></aside></section>`,
   );
   document.querySelector('#start-hunt')?.addEventListener('click', startHunt);
+  document.querySelector('#brief-back')?.addEventListener('click', () => {
+    if (config.mode === 'campaign') campaign();
+    else if (config.mode === 'daily') modeSelect();
+    else modeSetup(config.mode);
+  });
   audio.setMusic('briefing');
 }
 function startHunt() {
-  localStorage.setItem('adh-campaign-started', 'true');
+  if (currentRoundConfig?.mode === 'campaign') {
+    saveData = { ...saveData, campaign: startCampaign(saveData.campaign) };
+    persistSave();
+  }
   browserInput?.disconnect();
   browserInput = undefined;
   game?.destroy(true);
   game = undefined;
-  const locationIndex = Number(sessionStorage.getItem('location') ?? 2);
+  const storedConfig = sessionStorage.getItem('adh-round-config');
+  const config =
+    currentRoundConfig ??
+    (storedConfig ? (JSON.parse(storedConfig) as RoundConfig) : createRoundConfig('classic'));
+  currentRoundConfig = config;
+  const locationIndex = locations.findIndex(({ id }) => id === config.locationId);
   const selectedLocation = locations[locationIndex] ?? locations[2]!;
+  sessionStorage.setItem('location', String(Math.max(0, locationIndex)));
   void audio.unlock();
   audio.cleanupScene();
   const selectedSceneMap = sceneMapByLocation.get(selectedLocation.id);
   const selectedPropLayout = scenePropLayoutByLocation.get(selectedLocation.id);
-  root.innerHTML = `<div id="game"></div><div id="aim-layer" aria-label="Hunt aiming surface with working Alaskan Husky companion" data-shots="0" data-sprite-birds="0" data-scene-layers="4" data-dog-character="alaska-husky" data-dog-animation-state="idle" data-dog-layer="ground" data-location-id="${selectedLocation.id}" data-scene-background="assets/scenes/${selectedLocation.id}.png" data-scene-map-regions="${selectedSceneMap?.regions.length ?? 0}" data-scene-prop-count="${selectedPropLayout?.placements.length ?? 0}" data-scene-prop-invalid="0" data-dog-path-ids="${selectedSceneMap?.dogPatrolPaths.map(({ id }) => id).join(',') ?? ''}" data-scene-map-debug="${new URLSearchParams(location.search).get('debugSceneMap') === '1'}"></div><div class="hud"><div><small>SCORE</small><b id="score">000000</b><span id="combo">COMBO ×0</span></div><div class="objective">PINTAIL • FIELD ROUND</div><div><small>TIME</small><b id="time">01:00</b></div></div><div class="ammo"><small>SHELLS</small><b id="ammo">●●●●●</b><span>R RELOAD</span></div><div id="notice" aria-live="polite"></div><div id="pause" class="overlay hidden"><h2>HUNT PAUSED</h2><button id="resume">RESUME</button><button id="quit">RETURN TO MENU</button></div>`;
+  root.innerHTML = `<div id="game"></div><div id="aim-layer" aria-label="Hunt aiming surface with working Alaskan Husky companion" data-round-mode="${config.mode}" data-round-seed="${config.seed}" data-round-config='${JSON.stringify(config)}' data-shots="0" data-sprite-birds="0" data-scene-layers="4" data-dog-character="alaska-husky" data-dog-animation-state="idle" data-dog-layer="ground" data-location-id="${selectedLocation.id}" data-scene-background="assets/scenes/${selectedLocation.id}.png" data-scene-map-regions="${selectedSceneMap?.regions.length ?? 0}" data-scene-prop-count="${selectedPropLayout?.placements.length ?? 0}" data-scene-prop-invalid="0" data-dog-path-ids="${selectedSceneMap?.dogPatrolPaths.map(({ id }) => id).join(',') ?? ''}" data-scene-map-debug="${new URLSearchParams(location.search).get('debugSceneMap') === '1'}"></div><div class="hud"><div><small>SCORE</small><b id="score">000000</b><span id="combo">COMBO ×0</span></div><div class="objective"><b>${modePresentations.find(({ id }) => id === config.mode)?.name.toUpperCase()}</b><span>${config.targetSpeciesIds.map(speciesName).join(' • ')}</span><small>${config.objective.description}</small>${config.assists.identificationLabels ? '<em id="assist-label">IDENTIFICATION LABELS ON</em>' : ''}</div><div><small>${config.endless ? 'SURVIVAL' : 'TIME'}</small><b id="time">${config.endless ? 'WAVE 01' : formatTime(config.durationSeconds ?? 0)}</b><span id="mistakes">${config.endless ? '0 / 3 MISTAKES' : config.weather.toUpperCase()}</span></div></div><div class="ammo"><small>SHELLS</small><b id="ammo">${'●'.repeat(config.ammunition.magazineSize)}</b><span id="reloads">R RELOAD • ${config.ammunition.reloads === 'unlimited' ? '∞' : config.ammunition.reloads} LEFT</span></div><div id="notice" aria-live="polite"></div><div id="pause" class="overlay hidden"><h2>HUNT PAUSED</h2><button id="resume">RESUME</button><button id="quit">RETURN TO MENU</button></div>`;
   audio.setAmbience(selectedLocation.id);
   audio.setMusic('hunt');
-  const scene = new HuntScene(locationIndex);
+  const scene = new HuntScene(config);
   game = new Phaser.Game({
     type: Phaser.AUTO,
     parent: 'game',
@@ -328,12 +605,41 @@ function startHunt() {
       connectBrowserInput();
       scene.events.on(
         'hud',
-        (h: { score: number; ammo: number; combo: number; time: number; shots?: number }) => {
+        (h: {
+          score: number;
+          ammo: number;
+          magazineSize: number;
+          reloads: number | 'unlimited';
+          combo: number;
+          time: number | null;
+          elapsed: number;
+          mistakes: number;
+          shots?: number;
+        }) => {
           setText('score', String(h.score).padStart(6, '0'));
-          setText('ammo', '●'.repeat(h.ammo) + '○'.repeat(5 - h.ammo));
+          setText('ammo', '●'.repeat(h.ammo) + '○'.repeat(h.magazineSize - h.ammo));
           setText('combo', `COMBO ×${h.combo}`);
-          setText('time', `00:${String(Math.max(0, h.time)).padStart(2, '0')}`);
+          setText(
+            'time',
+            h.time === null
+              ? `WAVE ${String(Math.floor(h.elapsed / 30) + 1).padStart(2, '0')}`
+              : formatTime(Math.max(0, h.time)),
+          );
+          setText('reloads', `R RELOAD • ${h.reloads === 'unlimited' ? '∞' : h.reloads} LEFT`);
+          setText(
+            'mistakes',
+            config.endless
+              ? `${h.mistakes} / ${config.passRequirements.maxMistakes ?? 3} MISTAKES`
+              : config.weather.toUpperCase(),
+          );
           aimLayer?.setAttribute('data-shots', String(h.shots ?? 0));
+        },
+      );
+      scene.events.on(
+        'spawn-pressure',
+        ({ wave, speedMultiplier }: { wave: number; speedMultiplier: number }) => {
+          aimLayer?.setAttribute('data-round-wave', String(wave));
+          aimLayer?.setAttribute('data-round-speed-multiplier', speedMultiplier.toFixed(2));
         },
       );
       scene.events.on('aim', ({ x, y }: { x: number; y: number }) => {
@@ -787,6 +1093,11 @@ function startHunt() {
           aimLayer?.setAttribute('data-target-x', x.toFixed(2));
           aimLayer?.setAttribute('data-target-y', y.toFixed(2));
           aimLayer?.setAttribute('data-target-protected', String(protectedBird));
+          if (config.assists.identificationLabels)
+            setText(
+              'assist-label',
+              `${speciesName(speciesId).toUpperCase()} • ${protectedBird ? 'PROTECTED' : config.targetSpeciesIds.includes(speciesId) ? 'TARGET' : 'NON-TARGET'}`,
+            );
         },
       );
       scene.events.on(
@@ -821,7 +1132,14 @@ function startHunt() {
       );
       scene.events.on(
         'complete',
-        (r: { score: number; hits: number; shots: number; accuracy: number }) => results(r),
+        (
+          r: RoundResultStats & {
+            passed: boolean;
+            failures: readonly string[];
+            endReason: string;
+            config: RoundConfig;
+          },
+        ) => results(r),
       );
     } else requestAnimationFrame(waitForCanvas);
   };
@@ -849,46 +1167,112 @@ function setText(id: string, v: string) {
   const el = document.getElementById(id);
   if (el) el.textContent = v;
 }
-function results(r: { score: number; hits: number; shots: number; accuracy: number }) {
+
+function formatTime(totalSeconds: number) {
+  const seconds = Math.max(0, Math.ceil(totalSeconds));
+  return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
+}
+
+function results(
+  r: RoundResultStats & {
+    passed: boolean;
+    failures: readonly string[];
+    endReason: string;
+    config: RoundConfig;
+  },
+) {
+  if (debugRoundCompletionHandler) {
+    window.removeEventListener('adh-debug-complete-round', debugRoundCompletionHandler);
+    debugRoundCompletionHandler = undefined;
+  }
   browserInput?.disconnect();
   browserInput = undefined;
   game?.destroy(true);
   game = undefined;
   audio.cleanupScene();
   audio.success();
-  const locationIndex = Number(sessionStorage.getItem('location') ?? 0);
-  const previousNext = Number(localStorage.getItem('adh-next-location') ?? 0);
-  const passed = r.score >= 1200 && r.accuracy >= 45;
+  currentRoundConfig = r.config;
+  const campaignResult =
+    r.config.mode === 'campaign'
+      ? applyCampaignResult(campaignMissions, saveData.campaign, r.config.locationId, r)
+      : undefined;
+  if (campaignResult) saveData = { ...saveData, campaign: campaignResult.progress };
+  saveData = {
+    ...saveData,
+    records: {
+      ...saveData.records,
+      highScores: {
+        ...saveData.records.highScores,
+        [r.config.mode]: Math.max(r.score, saveData.records.highScores[r.config.mode] ?? 0),
+      },
+    },
+    stats: {
+      ...saveData.stats,
+      shots: saveData.stats.shots + r.shots,
+      validHits: saveData.stats.validHits + r.hits,
+      misses: saveData.stats.misses + r.misses,
+      huntsCompleted: saveData.stats.huntsCompleted + 1,
+      bestAccuracy: Math.max(saveData.stats.bestAccuracy, r.accuracy),
+    },
+  };
+  persistSave();
   localStorage.setItem(
-    'adh-next-location',
-    String(
-      Math.min(
-        locations.length - 1,
-        passed ? Math.max(previousNext, locationIndex + 1) : previousNext,
-      ),
-    ),
+    modeBestStorageKey(r.config.mode),
+    String(Math.max(r.score, Number(localStorage.getItem(modeBestStorageKey(r.config.mode)) ?? 0))),
   );
-  localStorage.setItem(
-    'adh-hunts-completed',
-    String(Number(localStorage.getItem('adh-hunts-completed') ?? 0) + 1),
-  );
-  localStorage.setItem(
-    'adh-best-score',
-    String(Math.max(r.score, Number(localStorage.getItem('adh-best-score') ?? 0))),
-  );
-  localStorage.setItem(
-    'adh-best-accuracy',
-    String(Math.max(r.accuracy, Number(localStorage.getItem('adh-best-accuracy') ?? 0))),
-  );
-  localStorage.setItem(
-    'adh-total-hits',
-    String(r.hits + Number(localStorage.getItem('adh-total-hits') ?? 0)),
-  );
+  if (r.config.mode === 'daily' && r.config.challengeDate)
+    localStorage.setItem(
+      `adh-daily-result-${r.config.challengeDate}`,
+      JSON.stringify({
+        score: r.score,
+        accuracy: r.accuracy,
+        identificationAccuracy: r.identificationAccuracy,
+        passed: r.passed,
+        seed: r.config.seed,
+      }),
+    );
+  const effectivePassed = campaignResult?.evaluation.passed ?? r.passed;
+  const effectiveFailures = campaignResult?.evaluation.failures ?? r.failures;
+  const nextCampaignLocation =
+    r.config.mode === 'campaign' && effectivePassed
+      ? campaignNextLocation(
+          saveData.campaign,
+          r.config.locationId as CampaignLocationId,
+        )
+      : undefined;
+  const newlyUnlocked = campaignResult?.newlyUnlockedLocation
+    ? locations.find(({ id }) => id === campaignResult.newlyUnlockedLocation)
+    : undefined;
+  const modeName = modePresentations.find(({ id }) => id === r.config.mode)?.name ?? r.config.mode;
+  const resultLabel = effectivePassed
+    ? r.config.mode === 'practice'
+      ? 'TRAINING COMPLETE'
+      : 'OBJECTIVE COMPLETE'
+    : 'OBJECTIVE NOT MET';
   shell(
-    `<section class="results"><p>ROUND COMPLETE</p><h1>DELTA CLEARED</h1><div class="score-result">${r.score.toLocaleString()}</div><div class="result-grid"><div><b>${r.hits}</b><span>VALID HITS</span></div><div><b>${r.accuracy}%</b><span>ACCURACY</span></div><div><b>${r.shots}</b><span>SHOTS</span></div><div><b>${r.score >= 1200 ? 'A' : 'B'}</b><span>RATING</span></div></div><div><button class="primary" id="retry">RETRY</button><button data-go="menu">MAIN MENU</button></div></section>`,
+    `<section class="results mode-results" data-result-mode="${r.config.mode}" data-result-passed="${effectivePassed}"><p>${modeName.toUpperCase()} • ${resultLabel}</p><h1>${saveData.campaign.campaignComplete && r.config.mode === 'campaign' && effectivePassed ? 'CAMPAIGN COMPLETE' : effectivePassed ? 'ROUND CLEARED' : 'KEEP TRACKING'}</h1>${newlyUnlocked ? `<p class="campaign-unlock">NEW AREA UNLOCKED: <b>${newlyUnlocked.name}</b></p>` : ''}<div class="score-result">${r.score.toLocaleString()}</div><div class="result-grid"><div><b>${r.hits}</b><span>VALID HITS</span></div><div><b>${r.accuracy}%</b><span>SHOT ACCURACY</span></div><div><b>${r.identificationAccuracy}%</b><span>IDENTIFICATION</span></div><div><b>${formatTime(r.elapsedSeconds)}</b><span>ELAPSED</span></div><div><b>${r.misses}</b><span>MISSES</span></div><div><b>${r.nonTargetHits}</b><span>NON-TARGET</span></div><div><b>${r.protectedHits}</b><span>PROTECTED</span></div><div><b>${campaignResult?.evaluation.rating ?? r.endReason.toUpperCase()}</b><span>${campaignResult ? 'MISSION RATING' : 'ROUND END'}</span></div></div>${effectiveFailures.length ? `<p class="result-requirements">Objective missed: ${effectiveFailures.join(' • ')}</p>` : ''}<div class="mode-actions"><button class="primary" id="retry">${['practice', 'custom'].includes(r.config.mode) ? 'RESTART SAME SETTINGS' : 'RETRY SAME ROUND'}</button>${r.config.mode === 'classic' ? '<button id="next-round">NEXT CLASSIC ROUND</button>' : ''}${nextCampaignLocation ? '<button id="campaign-next">NEXT AREA</button>' : ''}${r.config.mode === 'campaign' ? '<button id="campaign-map">CAMPAIGN MAP</button>' : ''}${r.config.mode === 'campaign' && saveData.campaign.campaignComplete ? '<button data-go="stats">RECORDS</button>' : ''}${!['campaign', 'daily'].includes(r.config.mode) ? '<button id="change-settings">CHANGE SETTINGS</button>' : ''}<button data-go="menu">MAIN MENU</button></div></section>`,
   );
   bindNav();
   document.querySelector('#retry')?.addEventListener('click', startHunt);
+  document
+    .querySelector('#change-settings')
+    ?.addEventListener('click', () =>
+      modeSetup(r.config.mode as Exclude<GameMode, 'campaign' | 'daily'>),
+    );
+  document.querySelector('#next-round')?.addEventListener('click', () => {
+    const nextOptions = {
+      ...r.config.playerOptions,
+      roundIndex: (r.config.playerOptions.roundIndex ?? 0) + 1,
+    };
+    modeOptions.classic = nextOptions;
+    saveModeOptions();
+    currentRoundConfig = createRoundConfig('classic', nextOptions);
+    briefing();
+  });
+  document.querySelector('#campaign-next')?.addEventListener('click', () => {
+    if (nextCampaignLocation) openCampaignLocation(nextCampaignLocation);
+  });
+  document.querySelector('#campaign-map')?.addEventListener('click', campaign);
 }
 function guide() {
   shell(
@@ -935,7 +1319,7 @@ function settings() {
     };
   });
   document.querySelector('#export')?.addEventListener('click', () => {
-    const blob = new Blob([JSON.stringify({ ...localStorage }, null, 2)], {
+    const blob = new Blob([serializeSave(saveData)], {
       type: 'application/json',
     });
     const a = document.createElement('a');
@@ -944,7 +1328,17 @@ function settings() {
     a.click();
   });
   document.querySelector('#reset')?.addEventListener('click', () => {
-    if (confirm('Reset all local game data?')) localStorage.clear();
+    if (
+      confirm(
+        'Reset the campaign, records, settings, and all other local game data? This cannot be undone.',
+      )
+    ) {
+      localStorage.clear();
+      sessionStorage.clear();
+      saveData = createDefaultSave();
+      persistSave();
+      splash();
+    }
   });
 }
 function stats() {
