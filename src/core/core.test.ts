@@ -39,6 +39,21 @@ describe('save compatibility', () => {
     expect(parseSave('{broken')).toEqual(createDefaultSave());
     expect(parseSave(serializeSave(migrated))).toEqual(migrated);
   });
+  it('migrates the legacy campaign location alias while preserving unrelated data', () => {
+    const migrated = migrateSave({
+      version: 2,
+      campaign: {
+        completedMissions: ['matsu-wetlands'],
+        unlockedLocations: ['matsu-wetlands', 'cook'],
+      },
+      settings: { masterVolume: 0.25 },
+      records: { highScores: { classic: 1234 } },
+    });
+    expect(migrated.campaign.completedLocations).toEqual(['matsu']);
+    expect(migrated.campaign.unlockedLocations).toEqual(['matsu', 'cook']);
+    expect(migrated.settings.masterVolume).toBe(0.25);
+    expect(migrated.records.highScores.classic).toBe(1234);
+  });
 });
 
 describe('controller translation', () => {

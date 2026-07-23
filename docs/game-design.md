@@ -30,18 +30,22 @@ The campaign introduces mechanics in an authored order while rounds remain seede
 | ------- | ---------------------------- | ----------------------------------------- |
 | 1       | Mat-Su Valley wetlands       | Aim, fire, reload, valid targets          |
 | 2       | Cook Inlet coastal marsh     | Tide-side wind and lookalikes             |
-| 3       | River flats during migration | Flocks and lead timing                    |
-| 4       | Interior boreal forest       | Obstruction and flushing birds            |
-| 5       | Snow-covered willow country  | Snow visibility and grouse identification |
-| 6       | Tundra lake country          | Mixed waterfowl pools                     |
-| 7       | Yukon-Kuskokwim Delta        | Long formations and strict target calls   |
-| 8       | Copper River Delta           | Rain, gusts, and coastal migration        |
-| 9       | Southeast rainforest estuary | Low light and heavy rain                  |
+| 3       | Copper River Delta           | Rain, gusts, and coastal migration        |
+| 4       | Yukon-Kuskokwim Delta        | Long formations and strict target calls   |
+| 5       | Interior boreal forest       | Obstruction and flushing birds            |
+| 6       | Arctic coastal plain         | Fog, glare, and distant silhouettes       |
+| 7       | Aleutian shoreline           | Crosswinds and marine flocks              |
+| 8       | Southeast rainforest estuary | Low light and heavy rain                  |
+| 9       | Tundra lake country          | Mixed waterfowl pools                     |
 | 10      | Alpine ptarmigan country     | Burst flight and seasonal plumage         |
-| 11      | Arctic coastal plain         | Fog, glare, and distant silhouettes       |
-| 12      | Aleutian shoreline           | Finale: crosswinds and a multi-wave storm |
+| 11      | Snow-covered willow country  | Snow visibility and grouse identification |
+| 12      | River flats during migration | Finale: flock timing and identification   |
 
-Each chapter includes three standard hunts and a mastery hunt. Stars come from objective completion, accuracy, and protected-bird avoidance. Progress never requires a perfect score; assist settings do not block advancement.
+Each chapter is a replayable 75-second fictional arcade mission with its own
+minimum score, target-hit, shot-accuracy, identification-accuracy, and
+protected-bird-avoidance combination. Passing unlocks exactly the next chapter;
+ratings preserve the best local result. These goals are game objectives, not
+real hunting regulations.
 
 ## Location direction
 

@@ -185,3 +185,21 @@ Last updated: 2026-07-22
 - Added live persistence for best score, best accuracy, completed hunts, total valid hits, species identification, and the next campaign location.
 - Browser plugin availability was checked; it was not installed, so visual QA used the repository's Playwright/Chromium setup as the documented fallback.
 - Validation: `npm run validate:assets`, `npm run check` (60/60 Vitest tests plus production build), and the full 26/26 development Playwright suite passed. Production front-door coverage passed for first/returning launch, keyboard, touch, reduced motion, all required viewport shapes, Field Guide navigation, and packaged WebP delivery.
+
+## Complete 12-area campaign progression (2026-07-22)
+
+- Added a pure campaign progression module with the canonical twelve-area
+  route, fictional per-location objectives, sequential unlocking, replay,
+  mission ratings, best results, Continue selection, finale handling, and
+  defensive recovery.
+- Upgraded the save to version 3. Legacy `matsu-wetlands` and former
+  index-based campaign keys migrate without losing unrelated records or
+  settings; all new campaign writes use the versioned serializer.
+- Campaign map, briefing, menu, and results now consume the same persisted
+  progression. Area-four failure remains locked, passing immediately saves and
+  unlocks area five, and the twelfth pass ends without a nonexistent next area.
+- Browser QA uses repository Playwright because the Browser plugin is not
+  available in this workspace.
+- Validation: asset validation passed; `npm run check` passed with 86 Vitest
+  assertions and a production PWA build; all 38 Chromium browser tests passed,
+  including deterministic area-four failure, area-five unlock, and reload.

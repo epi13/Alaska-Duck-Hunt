@@ -51,7 +51,12 @@ for the same UTC date receive the same configuration.
 - `adh-mode-best-{mode}` stores the best score for each mode.
 - `adh-daily-result-YYYY-MM-DD` stores score, shot accuracy, identification
   accuracy, pass state, and seed for the UTC daily challenge.
-- Only a passed Campaign result advances `adh-next-location`.
+- The version-3 save under `adh-save` owns Campaign completion, unlocks, best
+  location results, and campaign-complete state. Legacy `matsu-wetlands` and
+  the former index keys migrate through the same serializer.
+- Only a passed location mission unlocks the next canonical Campaign area.
+- Continue Campaign selects the highest unlocked incomplete location; completed
+  locations remain replayable from the map.
 - Practice and Custom results never advance Campaign.
 
 All ammunition, seasons, objectives, limits, and scoring are fictional game

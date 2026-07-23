@@ -4,9 +4,11 @@ import {
   type RoundPlayerOptions,
   validateRoundConfig,
 } from '../core/modes/round-config';
+import { campaignMission } from '../core/campaign/campaign-progression';
 import { dailySeed, SeededRandom } from '../core/rng';
 import type { Weather } from '../core/round-generator';
 import { birdHabitats } from './bird-habitats';
+import { campaignMissions } from './campaign-missions';
 import { locations, modes, species, type GameMode } from './content';
 
 export interface ModePresentation {
@@ -166,6 +168,7 @@ export function createRoundConfig(
   const durationSeconds = durationByMode[mode];
   const endless = mode === 'endless';
   const defaults = modeRules(mode);
+  const mission = mode === 'campaign' ? campaignMission(campaignMissions, locationId) : undefined;
   const config: RoundConfig = {
     version: 1,
     mode,
@@ -209,8 +212,14 @@ export function createRoundConfig(
     weather,
     visibility: weatherVisibility(weather),
     scoring: defaults.scoring,
-    objective: defaults.objective,
-    passRequirements: defaults.passRequirements,
+    objective: mission
+      ? {
+          kind: 'score',
+          target: mission.requirements.minScore,
+          description: mission.objective,
+        }
+      : defaults.objective,
+    passRequirements: mission?.requirements ?? defaults.passRequirements,
     assists,
     playerOptions: { ...options, locationId, targetSpeciesIds: targets },
     campaignMissionIndex: mode === 'campaign' ? (options.roundIndex ?? 0) : undefined,

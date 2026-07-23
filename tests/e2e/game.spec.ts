@@ -155,17 +155,103 @@ test('returning player sees Continue Campaign and the persisted next location', 
   page,
 }) => {
   await page.evaluate(() => {
-    localStorage.setItem('adh-campaign-started', 'true');
-    localStorage.setItem('adh-next-location', '3');
-    localStorage.setItem('adh-hunts-completed', '7');
-    localStorage.setItem('adh-best-score', '2450');
+    localStorage.setItem(
+      'adh-save',
+      JSON.stringify({
+        version: 3,
+        campaign: {
+          started: true,
+          completedLocations: ['matsu', 'cook', 'copper'],
+          unlockedLocations: ['matsu', 'cook', 'copper', 'yk'],
+        },
+        records: { highScores: { campaign: 2450 } },
+        stats: { huntsCompleted: 7 },
+      }),
+    );
   });
   await page.reload();
   await expect(page.getByRole('button', { name: 'Continue Campaign' })).toBeVisible();
   await expect(page.getByText(/NEXT: Yukon–Kuskokwim Delta/i)).toBeVisible();
   await page.getByRole('button', { name: 'Continue Campaign' }).click();
-  await expect(page.getByRole('heading', { name: 'ALASKA FLYWAYS' })).toBeVisible();
-  await expect(page.locator('.location.current')).toContainText('Yukon–Kuskokwim Delta');
+  await expect(page.locator('.brief')).toContainText('Yukon–Kuskokwim Delta');
+});
+
+test('area four failure stays locked, then passing unlocks and persists area five', async ({
+  page,
+}) => {
+  test.skip(
+    process.env.PLAYWRIGHT_PRODUCTION === '1',
+    'Uses the development-only deterministic round completion event.',
+  );
+  await page.evaluate(() => {
+    localStorage.setItem(
+      'adh-save',
+      JSON.stringify({
+        version: 3,
+        campaign: {
+          started: true,
+          completedLocations: ['matsu', 'cook', 'copper'],
+          unlockedLocations: ['matsu', 'cook', 'copper', 'yk'],
+          bestResults: {},
+          campaignComplete: false,
+        },
+      }),
+    );
+  });
+  await page.reload();
+  await page.getByRole('button', { name: 'Continue Campaign' }).click();
+  await expect(page.locator('.brief')).toContainText('Yukon–Kuskokwim Delta');
+  await page.locator('#start-hunt').click();
+  await expect(page.locator('canvas')).toBeVisible();
+  await page.evaluate(() =>
+    window.dispatchEvent(
+      new CustomEvent('adh-debug-complete-round', {
+        detail: {
+          score: 100,
+          hits: 1,
+          shots: 5,
+          accuracy: 20,
+          identificationAccuracy: 25,
+          protectedHits: 0,
+          nonTargetHits: 0,
+          misses: 4,
+          elapsedSeconds: 75,
+        },
+      }),
+    ),
+  );
+  await expect(page.locator('.mode-results')).toHaveAttribute('data-result-passed', 'false');
+  await expect(page.locator('.result-requirements')).toContainText('Objective missed');
+  await page.locator('#campaign-map').click();
+  await expect(page.locator('[data-location-id="interior"]')).toBeDisabled();
+
+  await page.locator('[data-location-id="yk"]').click();
+  await page.locator('#start-hunt').click();
+  await expect(page.locator('canvas')).toBeVisible();
+  await page.evaluate(() =>
+    window.dispatchEvent(
+      new CustomEvent('adh-debug-complete-round', {
+        detail: {
+          score: 10_000,
+          hits: 20,
+          shots: 20,
+          accuracy: 100,
+          identificationAccuracy: 100,
+          protectedHits: 0,
+          nonTargetHits: 0,
+          misses: 0,
+          elapsedSeconds: 30,
+        },
+      }),
+    ),
+  );
+  await expect(page.locator('.campaign-unlock')).toContainText('Interior Boreal Forest');
+  await page.getByRole('button', { name: 'Next Area' }).click();
+  await expect(page.locator('.brief')).toContainText('Interior Boreal Forest');
+
+  await page.reload();
+  await page.getByRole('button', { name: 'Continue Campaign' }).click();
+  await expect(page.locator('.brief')).toContainText('Interior Boreal Forest');
 });
 
 test('keyboard Enter activates the focused primary action and safely unlocks audio', async ({

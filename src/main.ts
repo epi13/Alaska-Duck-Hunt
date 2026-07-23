@@ -5,6 +5,7 @@ import { birdSpriteBySpecies } from './data/bird-sprites';
 import { birdBehaviorBySpecies } from './data/bird-behaviors';
 import { sceneMapByLocation } from './data/scene-maps';
 import { scenePropLayoutByLocation } from './data/scene-props';
+import { campaignMissions } from './data/campaign-missions';
 import { AudioManager } from './services/audio';
 import { BrowserInputProvider, type InputEvent } from './core/input';
 import type { BirdFamily } from './core/birds/bird-placement';
@@ -22,6 +23,24 @@ import {
   type RoundPlayerOptions,
   type RoundResultStats,
 } from './core/modes/round-config';
+import {
+  applyCampaignResult,
+  campaignCurrentLocation,
+  campaignMission,
+  campaignNextLocation,
+  canPlayCampaignLocation,
+  CAMPAIGN_LOCATION_IDS,
+  startCampaign,
+  type CampaignLocationId,
+} from './core/campaign/campaign-progression';
+import {
+  createDefaultSave,
+  migrateLegacyCampaignIndex,
+  parseSave,
+  SAVE_STORAGE_KEY,
+  serializeSave,
+  type SaveData,
+} from './core/save';
 import './styles/main.css';
 
 const root = document.querySelector<HTMLDivElement>('#app')!;
@@ -74,7 +93,33 @@ let browserInput: BrowserInputProvider | undefined;
 let selectedMode: GameMode = 'campaign';
 let currentRoundConfig: RoundConfig | undefined;
 const modeOptions = loadModeOptions();
-type FrontDoorPage = 'campaign' | 'modes' | 'guide' | 'settings' | 'stats' | 'controller';
+let saveData = loadSaveData();
+let debugRoundCompletionHandler: EventListener | undefined;
+type FrontDoorPage =
+  | 'campaign'
+  | 'campaign-continue'
+  | 'modes'
+  | 'guide'
+  | 'settings'
+  | 'stats'
+  | 'controller';
+
+function loadSaveData(): SaveData {
+  const serialized = localStorage.getItem(SAVE_STORAGE_KEY);
+  let save = serialized ? parseSave(serialized) : createDefaultSave();
+  if (!serialized)
+    save = migrateLegacyCampaignIndex(
+      save,
+      localStorage.getItem('adh-next-location'),
+      localStorage.getItem('adh-campaign-started'),
+    );
+  localStorage.setItem(SAVE_STORAGE_KEY, serializeSave(save));
+  return save;
+}
+
+function persistSave() {
+  localStorage.setItem(SAVE_STORAGE_KEY, serializeSave(saveData));
+}
 
 function loadModeOptions(): Partial<Record<GameMode, RoundPlayerOptions>> {
   try {
@@ -110,18 +155,20 @@ function menuIcon(name: 'campaign' | 'modes' | 'guide' | 'records' | 'settings' 
 }
 
 function playerProgress() {
-  const nextLocationIndex = Math.min(
-    locations.length - 1,
-    Math.max(0, Number(localStorage.getItem('adh-next-location') ?? 0)),
-  );
+  const currentLocationId =
+    campaignCurrentLocation(saveData.campaign) ??
+    CAMPAIGN_LOCATION_IDS[CAMPAIGN_LOCATION_IDS.length - 1]!;
+  const nextLocationIndex = CAMPAIGN_LOCATION_IDS.indexOf(currentLocationId);
   return {
-    campaignStarted: localStorage.getItem('adh-campaign-started') === 'true',
+    campaignStarted: saveData.campaign.started,
     nextLocationIndex,
-    nextLocation: locations[nextLocationIndex]!,
-    hunts: Math.max(0, Number(localStorage.getItem('adh-hunts-completed') ?? 0)),
-    bestScore: Math.max(0, Number(localStorage.getItem('adh-best-score') ?? 0)),
-    bestAccuracy: Math.max(0, Number(localStorage.getItem('adh-best-accuracy') ?? 0)),
-    totalHits: Math.max(0, Number(localStorage.getItem('adh-total-hits') ?? 0)),
+    nextLocation: locations.find(({ id }) => id === currentLocationId) ?? locations[0]!,
+    completedLocations: saveData.campaign.completedLocations.length,
+    campaignComplete: saveData.campaign.campaignComplete,
+    hunts: saveData.stats.huntsCompleted,
+    bestScore: Math.max(0, ...Object.values(saveData.records.highScores)),
+    bestAccuracy: saveData.stats.bestAccuracy,
+    totalHits: saveData.stats.validHits,
     loggedSpecies: new Set(
       JSON.parse(localStorage.getItem('adh-species-logged') ?? '[]') as string[],
     ).size,
@@ -139,7 +186,7 @@ function wildlifeLayers() {
 
 function progressStrip(progress: ReturnType<typeof playerProgress>) {
   return `<div class="front-progress" aria-label="Campaign progress">
-    <div class="next-location"><img src="/assets/ui/start-copper-river.webp" alt=""><span><b>NEXT: ${progress.nextLocation.name}</b><small>${progress.nextLocationIndex} / ${locations.length} LOCATIONS CLEARED</small></span></div>
+    <div class="next-location"><img src="/assets/ui/start-copper-river.webp" alt=""><span><b>${progress.campaignComplete ? 'CAMPAIGN COMPLETE' : `NEXT: ${progress.nextLocation.name}`}</b><small>${progress.completedLocations} / ${locations.length} LOCATIONS CLEARED</small></span></div>
     <div><b>${species.length} SPECIES IN FIELD GUIDE</b><small>${progress.loggedSpecies} identified in completed hunts</small></div>
     <div class="offline-status"><span aria-hidden="true"></span><b>OFFLINE READY</b></div>
     <small class="front-legal">ORIGINAL ART & AUDIO • FICTIONAL GAME RULES • v1.0</small>
@@ -155,9 +202,11 @@ function shell(content: string) {
 
 function routePage(page: FrontDoorPage) {
   if (page === 'campaign') {
-    localStorage.setItem('adh-campaign-started', 'true');
+    saveData = { ...saveData, campaign: startCampaign(saveData.campaign) };
+    persistSave();
     campaign();
-  } else if (page === 'modes') modeSelect();
+  } else if (page === 'campaign-continue') continueCampaign();
+  else if (page === 'modes') modeSelect();
   else if (page === 'guide') guide();
   else if (page === 'settings') settings();
   else if (page === 'stats') stats();
@@ -210,6 +259,7 @@ function bindNav() {
 function splash() {
   const progress = playerProgress();
   const campaignAction = progress.campaignStarted ? 'CONTINUE CAMPAIGN' : 'START CAMPAIGN';
+  const campaignRoute = progress.campaignStarted ? 'campaign-continue' : 'campaign';
   root.innerHTML = `<section class="front-door start-screen" aria-labelledby="start-title">
     ${wildlifeLayers()}
     <div class="front-panel pixel-frame">
@@ -217,7 +267,7 @@ function splash() {
       <h1 id="start-title"><span>ALASKA</span><strong>DUCK HUNT</strong></h1>
       <p class="front-subtitle">IDENTIFY THE FLOCK. HUNT THE FLYWAY.</p>
       <div class="front-actions">
-        <button id="enter" class="primary large" data-front-go="campaign" data-controller-action="confirm">${campaignAction}</button>
+        <button id="enter" class="primary large" data-front-go="${campaignRoute}" data-controller-action="confirm">${campaignAction}</button>
         <button class="secondary-action" data-front-go="modes">CHOOSE HUNT MODE</button>
         <div class="front-quick-actions">
           <button data-front-go="guide">${menuIcon('guide')} FIELD GUIDE</button>
@@ -235,12 +285,13 @@ function splash() {
 function menu() {
   const progress = playerProgress();
   const campaignAction = progress.campaignStarted ? 'CONTINUE CAMPAIGN' : 'START CAMPAIGN';
+  const campaignRoute = progress.campaignStarted ? 'campaign-continue' : 'campaign';
   root.innerHTML = `<section class="front-door main-menu-screen" aria-labelledby="menu-title">
     ${wildlifeLayers()}
     <div class="front-panel menu-panel pixel-frame">
       <h1 id="menu-title"><span>ALASKA</span><strong>DUCK HUNT</strong></h1>
       <p class="front-subtitle">KNOW THE SILHOUETTE. FOLLOW THE FLYWAY.</p>
-      <button class="primary large" data-front-go="campaign">${campaignAction}</button>
+      <button class="primary large" data-front-go="${campaignRoute}">${campaignAction}</button>
       <button class="secondary-action" data-front-go="modes">CHOOSE HUNT MODE</button>
     </div>
     <nav class="front-destinations" aria-label="Main menu">
@@ -390,26 +441,46 @@ function modeSetup(mode: Exclude<GameMode, 'campaign' | 'daily'>) {
   });
 }
 function campaign() {
-  const progress = playerProgress();
+  const currentLocationId = campaignCurrentLocation(saveData.campaign);
   shell(
-    `<section class="page campaign"><div class="section-title"><p>CAMPAIGN • NORTHBOUND</p><h1>ALASKA FLYWAYS</h1></div><div class="map-grid">${locations.map((l, i) => `<button class="location ${i > progress.nextLocationIndex ? 'locked' : ''} ${i === progress.nextLocationIndex ? 'current' : ''}" data-location="${i}" ${i > progress.nextLocationIndex ? 'aria-disabled="true"' : ''}><span>${String(i + 1).padStart(2, '0')}</span><b>${l.name}</b><small>${l.region} • ${l.habitat}${i === progress.nextLocationIndex ? ' • NEXT' : ''}</small></button>`).join('')}</div><p class="hint">Complete accuracy and identification objectives to unlock the northbound route.</p></section>`,
+    `<section class="page campaign"><div class="section-title"><p>CAMPAIGN • NORTHBOUND</p><h1>ALASKA FLYWAYS</h1></div><div class="map-grid">${locations
+      .map((location, index) => {
+        const id = location.id as CampaignLocationId;
+        const unlocked = canPlayCampaignLocation(saveData.campaign, id);
+        const completed = saveData.campaign.completedLocations.includes(id);
+        const current = id === currentLocationId;
+        const mission = campaignMission(campaignMissions, id);
+        const best = saveData.campaign.bestResults[id];
+        return `<button class="location ${unlocked ? 'unlocked' : 'locked'} ${completed ? 'completed' : ''} ${current ? 'current' : ''}" data-location="${index}" data-location-id="${id}" ${unlocked ? '' : 'disabled aria-disabled="true"'}><span>${String(index + 1).padStart(2, '0')}</span><b>${location.name}</b><small>${location.region} • ${completed ? `COMPLETED • BEST ${best?.rating ?? 'C'}` : current ? 'CURRENT MISSION' : unlocked ? 'AVAILABLE' : 'LOCKED'}</small><em>${mission.objective}</em></button>`;
+      })
+      .join('')}</div><p class="hint">${saveData.campaign.campaignComplete ? 'Campaign complete. Every location remains available for replay.' : 'Complete each fictional arcade objective to unlock the next area.'}</p><p class="disclaimer">Campaign goals are fictional arcade challenges and do not represent real hunting regulations.</p></section>`,
   );
   root.querySelectorAll<HTMLElement>('[data-location]').forEach(
     (b) =>
       (b.onclick = () => {
-        if (!b.classList.contains('locked')) {
-          const index = Number(b.dataset.location ?? 0);
-          sessionStorage.setItem('location', String(index));
-          modeOptions.campaign = {
-            locationId: locations[index]?.id,
-            roundIndex: index,
-          };
-          saveModeOptions();
-          currentRoundConfig = createRoundConfig('campaign', modeOptions.campaign);
-          briefing();
-        }
+        const id = b.dataset.locationId;
+        if (id && canPlayCampaignLocation(saveData.campaign, id))
+          openCampaignLocation(id as CampaignLocationId);
       }),
   );
+}
+
+function openCampaignLocation(locationId: CampaignLocationId) {
+  if (!canPlayCampaignLocation(saveData.campaign, locationId)) return;
+  const index = CAMPAIGN_LOCATION_IDS.indexOf(locationId);
+  sessionStorage.setItem('location', String(index));
+  modeOptions.campaign = { locationId, roundIndex: index };
+  saveModeOptions();
+  currentRoundConfig = createRoundConfig('campaign', modeOptions.campaign);
+  briefing();
+}
+
+function continueCampaign() {
+  saveData = { ...saveData, campaign: startCampaign(saveData.campaign) };
+  persistSave();
+  const locationId = campaignCurrentLocation(saveData.campaign);
+  if (locationId) openCampaignLocation(locationId);
+  else campaign();
 }
 function briefing() {
   const config =
@@ -418,6 +489,22 @@ function briefing() {
       roundIndex: Number(sessionStorage.getItem('location') ?? 0),
     });
   currentRoundConfig = config;
+  if (import.meta.env.DEV) {
+    if (debugRoundCompletionHandler)
+      window.removeEventListener('adh-debug-complete-round', debugRoundCompletionHandler);
+    debugRoundCompletionHandler = ((event: CustomEvent<RoundResultStats>) => {
+      results({
+        ...event.detail,
+        passed: false,
+        failures: [],
+        endReason: 'objective',
+        config,
+      });
+    }) as EventListener;
+    window.addEventListener('adh-debug-complete-round', debugRoundCompletionHandler, {
+      once: true,
+    });
+  }
   sessionStorage.setItem('adh-round-config', JSON.stringify(config));
   const l = locations.find(({ id }) => id === config.locationId) ?? locations[0]!;
   const target = species.find(({ id }) => id === config.targetSpeciesIds[0]) ?? species[0]!;
@@ -443,7 +530,10 @@ function briefing() {
   audio.setMusic('briefing');
 }
 function startHunt() {
-  localStorage.setItem('adh-campaign-started', 'true');
+  if (currentRoundConfig?.mode === 'campaign') {
+    saveData = { ...saveData, campaign: startCampaign(saveData.campaign) };
+    persistSave();
+  }
   browserInput?.disconnect();
   browserInput = undefined;
   game?.destroy(true);
@@ -1091,6 +1181,10 @@ function results(
     config: RoundConfig;
   },
 ) {
+  if (debugRoundCompletionHandler) {
+    window.removeEventListener('adh-debug-complete-round', debugRoundCompletionHandler);
+    debugRoundCompletionHandler = undefined;
+  }
   browserInput?.disconnect();
   browserInput = undefined;
   game?.destroy(true);
@@ -1098,29 +1192,30 @@ function results(
   audio.cleanupScene();
   audio.success();
   currentRoundConfig = r.config;
-  const locationIndex = locations.findIndex(({ id }) => id === r.config.locationId);
-  const previousNext = Number(localStorage.getItem('adh-next-location') ?? 0);
-  if (r.config.mode === 'campaign' && r.passed)
-    localStorage.setItem(
-      'adh-next-location',
-      String(Math.min(locations.length - 1, Math.max(previousNext, locationIndex + 1))),
-    );
-  localStorage.setItem(
-    'adh-hunts-completed',
-    String(Number(localStorage.getItem('adh-hunts-completed') ?? 0) + 1),
-  );
-  localStorage.setItem(
-    'adh-best-score',
-    String(Math.max(r.score, Number(localStorage.getItem('adh-best-score') ?? 0))),
-  );
-  localStorage.setItem(
-    'adh-best-accuracy',
-    String(Math.max(r.accuracy, Number(localStorage.getItem('adh-best-accuracy') ?? 0))),
-  );
-  localStorage.setItem(
-    'adh-total-hits',
-    String(r.hits + Number(localStorage.getItem('adh-total-hits') ?? 0)),
-  );
+  const campaignResult =
+    r.config.mode === 'campaign'
+      ? applyCampaignResult(campaignMissions, saveData.campaign, r.config.locationId, r)
+      : undefined;
+  if (campaignResult) saveData = { ...saveData, campaign: campaignResult.progress };
+  saveData = {
+    ...saveData,
+    records: {
+      ...saveData.records,
+      highScores: {
+        ...saveData.records.highScores,
+        [r.config.mode]: Math.max(r.score, saveData.records.highScores[r.config.mode] ?? 0),
+      },
+    },
+    stats: {
+      ...saveData.stats,
+      shots: saveData.stats.shots + r.shots,
+      validHits: saveData.stats.validHits + r.hits,
+      misses: saveData.stats.misses + r.misses,
+      huntsCompleted: saveData.stats.huntsCompleted + 1,
+      bestAccuracy: Math.max(saveData.stats.bestAccuracy, r.accuracy),
+    },
+  };
+  persistSave();
   localStorage.setItem(
     modeBestStorageKey(r.config.mode),
     String(Math.max(r.score, Number(localStorage.getItem(modeBestStorageKey(r.config.mode)) ?? 0))),
@@ -1136,14 +1231,26 @@ function results(
         seed: r.config.seed,
       }),
     );
+  const effectivePassed = campaignResult?.evaluation.passed ?? r.passed;
+  const effectiveFailures = campaignResult?.evaluation.failures ?? r.failures;
+  const nextCampaignLocation =
+    r.config.mode === 'campaign' && effectivePassed
+      ? campaignNextLocation(
+          saveData.campaign,
+          r.config.locationId as CampaignLocationId,
+        )
+      : undefined;
+  const newlyUnlocked = campaignResult?.newlyUnlockedLocation
+    ? locations.find(({ id }) => id === campaignResult.newlyUnlockedLocation)
+    : undefined;
   const modeName = modePresentations.find(({ id }) => id === r.config.mode)?.name ?? r.config.mode;
-  const resultLabel = r.passed
+  const resultLabel = effectivePassed
     ? r.config.mode === 'practice'
       ? 'TRAINING COMPLETE'
       : 'OBJECTIVE COMPLETE'
     : 'OBJECTIVE NOT MET';
   shell(
-    `<section class="results mode-results" data-result-mode="${r.config.mode}" data-result-passed="${r.passed}"><p>${modeName.toUpperCase()} • ${resultLabel}</p><h1>${r.passed ? 'ROUND CLEARED' : 'KEEP TRACKING'}</h1><div class="score-result">${r.score.toLocaleString()}</div><div class="result-grid"><div><b>${r.hits}</b><span>VALID HITS</span></div><div><b>${r.accuracy}%</b><span>SHOT ACCURACY</span></div><div><b>${r.identificationAccuracy}%</b><span>IDENTIFICATION</span></div><div><b>${formatTime(r.elapsedSeconds)}</b><span>ELAPSED</span></div><div><b>${r.misses}</b><span>MISSES</span></div><div><b>${r.nonTargetHits}</b><span>NON-TARGET</span></div><div><b>${r.protectedHits}</b><span>PROTECTED</span></div><div><b>${r.endReason.toUpperCase()}</b><span>ROUND END</span></div></div>${r.failures.length ? `<p class="result-requirements">Still required: ${r.failures.join(' • ')}</p>` : ''}<div class="mode-actions"><button class="primary" id="retry">${['practice', 'custom'].includes(r.config.mode) ? 'RESTART SAME SETTINGS' : 'RETRY SAME ROUND'}</button>${r.config.mode === 'classic' ? '<button id="next-round">NEXT CLASSIC ROUND</button>' : ''}${r.config.mode === 'campaign' && r.passed ? '<button id="campaign-next">CAMPAIGN NEXT AREA</button>' : ''}${!['campaign', 'daily'].includes(r.config.mode) ? '<button id="change-settings">CHANGE SETTINGS</button>' : ''}<button data-go="menu">MAIN MENU</button></div></section>`,
+    `<section class="results mode-results" data-result-mode="${r.config.mode}" data-result-passed="${effectivePassed}"><p>${modeName.toUpperCase()} • ${resultLabel}</p><h1>${saveData.campaign.campaignComplete && r.config.mode === 'campaign' && effectivePassed ? 'CAMPAIGN COMPLETE' : effectivePassed ? 'ROUND CLEARED' : 'KEEP TRACKING'}</h1>${newlyUnlocked ? `<p class="campaign-unlock">NEW AREA UNLOCKED: <b>${newlyUnlocked.name}</b></p>` : ''}<div class="score-result">${r.score.toLocaleString()}</div><div class="result-grid"><div><b>${r.hits}</b><span>VALID HITS</span></div><div><b>${r.accuracy}%</b><span>SHOT ACCURACY</span></div><div><b>${r.identificationAccuracy}%</b><span>IDENTIFICATION</span></div><div><b>${formatTime(r.elapsedSeconds)}</b><span>ELAPSED</span></div><div><b>${r.misses}</b><span>MISSES</span></div><div><b>${r.nonTargetHits}</b><span>NON-TARGET</span></div><div><b>${r.protectedHits}</b><span>PROTECTED</span></div><div><b>${campaignResult?.evaluation.rating ?? r.endReason.toUpperCase()}</b><span>${campaignResult ? 'MISSION RATING' : 'ROUND END'}</span></div></div>${effectiveFailures.length ? `<p class="result-requirements">Objective missed: ${effectiveFailures.join(' • ')}</p>` : ''}<div class="mode-actions"><button class="primary" id="retry">${['practice', 'custom'].includes(r.config.mode) ? 'RESTART SAME SETTINGS' : 'RETRY SAME ROUND'}</button>${r.config.mode === 'classic' ? '<button id="next-round">NEXT CLASSIC ROUND</button>' : ''}${nextCampaignLocation ? '<button id="campaign-next">NEXT AREA</button>' : ''}${r.config.mode === 'campaign' ? '<button id="campaign-map">CAMPAIGN MAP</button>' : ''}${r.config.mode === 'campaign' && saveData.campaign.campaignComplete ? '<button data-go="stats">RECORDS</button>' : ''}${!['campaign', 'daily'].includes(r.config.mode) ? '<button id="change-settings">CHANGE SETTINGS</button>' : ''}<button data-go="menu">MAIN MENU</button></div></section>`,
   );
   bindNav();
   document.querySelector('#retry')?.addEventListener('click', startHunt);
@@ -1163,8 +1270,9 @@ function results(
     briefing();
   });
   document.querySelector('#campaign-next')?.addEventListener('click', () => {
-    campaign();
+    if (nextCampaignLocation) openCampaignLocation(nextCampaignLocation);
   });
+  document.querySelector('#campaign-map')?.addEventListener('click', campaign);
 }
 function guide() {
   shell(
@@ -1211,7 +1319,7 @@ function settings() {
     };
   });
   document.querySelector('#export')?.addEventListener('click', () => {
-    const blob = new Blob([JSON.stringify({ ...localStorage }, null, 2)], {
+    const blob = new Blob([serializeSave(saveData)], {
       type: 'application/json',
     });
     const a = document.createElement('a');
@@ -1220,7 +1328,17 @@ function settings() {
     a.click();
   });
   document.querySelector('#reset')?.addEventListener('click', () => {
-    if (confirm('Reset all local game data?')) localStorage.clear();
+    if (
+      confirm(
+        'Reset the campaign, records, settings, and all other local game data? This cannot be undone.',
+      )
+    ) {
+      localStorage.clear();
+      sessionStorage.clear();
+      saveData = createDefaultSave();
+      persistSave();
+      splash();
+    }
   });
 }
 function stats() {
