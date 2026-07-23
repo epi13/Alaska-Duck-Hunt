@@ -1,4 +1,5 @@
 import { access, readFile, readdir } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import { birdBehaviorBySpecies } from '../src/data/bird-behaviors';
 import { birdPlacementCompatibility } from '../src/core/birds/bird-placement';
 import { birdScoringBySpecies, scoreBird } from '../src/data/bird-scoring';
@@ -8,6 +9,7 @@ import { sceneMaps } from '../src/data/scene-maps';
 import { validateSceneMap } from '../src/core/scenes/scene-map';
 import { validateScenePropLayout } from '../src/core/scenes/scene-props';
 import { scenePropLayoutByLocation, scenePropLayouts } from '../src/data/scene-props';
+import { huskySprite } from '../src/data/husky-sprites';
 
 const birdIds = birdSprites.map((definition) => definition.speciesId);
 if (new Set(birdIds).size !== birdIds.length || new Set(species.map((entry) => entry.id)).size !== species.length) throw new Error('Species and sprite ids must be unique.');
@@ -126,8 +128,59 @@ for (const map of sceneMaps) {
   if (invalid.length) throw new Error(`Invalid ${map.locationId} prop placements: ${invalid.map(({ placementId, errors }) => `${placementId}: ${errors.join(', ')}`).join('; ')}`);
 }
 
+const huskyPng = await readFile(`public/${huskySprite.imagePath}`);
+const huskySize = pngSize(huskyPng);
+if (huskySize.width !== 512 || huskySize.height !== 512 || !pngHasAlpha(huskyPng)) {
+  throw new Error('The Alaskan Husky production atlas must be a 512x512 alpha PNG.');
+}
+const huskyAtlas = JSON.parse(await readFile(`public/${huskySprite.atlasPath}`, 'utf8')) as {
+  frames?: Record<string, { frame: { x: number; y: number; w: number; h: number } }>;
+  meta?: { characterId?: string; canonicalFacing?: string; contactAnchor?: { x?: number; y?: number } };
+};
+const expectedHuskyFrames = huskySprite.animations.flatMap(({ frames }) => frames);
+if (huskyAtlas.meta?.characterId !== huskySprite.characterId
+  || huskyAtlas.meta.canonicalFacing !== huskySprite.canonicalFacing
+  || huskyAtlas.meta.contactAnchor?.x !== huskySprite.contactAnchor.x
+  || huskyAtlas.meta.contactAnchor.y !== huskySprite.contactAnchor.y
+  || Object.keys(huskyAtlas.frames ?? {}).length !== 16
+  || expectedHuskyFrames.some((frame) => !huskyAtlas.frames?.[frame])) {
+  throw new Error('The Alaskan Husky atlas metadata does not match its typed runtime manifest.');
+}
+for (const [name, value] of Object.entries(huskyAtlas.frames ?? {})) {
+  const frame = value.frame;
+  if (frame.w !== 128 || frame.h !== 128 || frame.x < 0 || frame.y < 0 || frame.x + frame.w > 512 || frame.y + frame.h > 512) {
+    throw new Error(`Alaskan Husky frame ${name} must be a valid 128x128 atlas cell.`);
+  }
+}
+const huskyPreview = pngSize(await readFile(`public/${huskySprite.previewPath}`));
+if (huskyPreview.width !== 512 || huskyPreview.height !== 128) throw new Error('The Alaskan Husky preview must be 512x128.');
+for (const path of [
+  'assets/generated/characters/alaska-husky/ART_BRIEF_AND_PROMPT.md',
+  'assets/generated/characters/alaska-husky/keyed/alaska-husky-master.png',
+  'assets/generated/characters/alaska-husky/processed/alaska-husky-atlas.png',
+  'assets/references/Alaskan_Husky_Working_Dog/SOURCES_AND_LICENSES.md',
+  'assets/references/Alaskan_Husky_Working_Dog/denali-husky-conformation.jpg',
+  'assets/references/Alaskan_Husky_Working_Dog/denali-working-dog-movement.webp',
+]) await access(path);
+const huskyValidation = JSON.parse(await readFile('assets/generated/characters/alaska-husky/validation.json', 'utf8')) as {
+  characterId?: string;
+  checks?: { alphaValues?: number[]; maximumColorsPerFrameIncludingTransparency?: number; normalizedPawBaselineY?: number; proprietarySourceArtworkUsed?: boolean };
+  sha256?: Record<string, string>;
+};
+if (huskyValidation.characterId !== huskySprite.characterId
+  || huskyValidation.checks?.alphaValues?.join(',') !== '0,255'
+  || huskyValidation.checks.maximumColorsPerFrameIncludingTransparency !== 32
+  || huskyValidation.checks.normalizedPawBaselineY !== huskySprite.contactAnchor.y * 128
+  || huskyValidation.checks.proprietarySourceArtworkUsed !== false) {
+  throw new Error('The Alaskan Husky validation record is incomplete.');
+}
+for (const [relativePath, expectedHash] of Object.entries(huskyValidation.sha256 ?? {})) {
+  const path = relativePath.startsWith('public/') ? relativePath : `assets/generated/characters/alaska-husky/${relativePath}`;
+  const actualHash = createHash('sha256').update(await readFile(path)).digest('hex');
+  if (actualHash !== expectedHash) throw new Error(`Alaskan Husky asset checksum changed without updating its validation record: ${path}`);
+}
+
 for (const [path, width, height] of [
-  ['public/assets/characters/retriever.png', 512, 512],
   ['public/assets/habitat/wetland.png', 1024, 512],
   ['public/assets/habitat/forest.png', 1024, 512],
   ['public/assets/habitat/arctic.png', 1024, 512],
@@ -157,4 +210,4 @@ for (const id of regionalHabitatAtlases) {
   }
 }
 
-console.log(`Required original assets are present: ${birdIds.length} named bird atlases, ${locationIds.length} scene plates, one dog sheet, three legacy habitat atlases, and ${regionalHabitatAtlases.length} regional habitat atlases.`);
+console.log(`Required original assets are present: ${birdIds.length} named bird atlases, ${locationIds.length} scene plates, the named Alaskan Husky atlas/source/reference set, three legacy habitat atlases, and ${regionalHabitatAtlases.length} regional habitat atlases.`);

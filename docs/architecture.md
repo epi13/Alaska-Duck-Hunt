@@ -32,4 +32,4 @@ Gameplay consumes semantic actions (`aim`, `fire`, `reload`, `pause`, `confirm`)
 
 ## Bird behavior boundary
 
-`src/core/birds` contains pure transition, disturbance, flock-plan, and flight-vector functions. Species profiles, habitat affinities, scoring, and sprite manifests remain immutable data under `src/data`. `BirdEntity`, `BirdSpawnSystem`, and `DogFlushSystem` are presentation adapters: they translate deterministic plans into Phaser animation, depth, input hitboxes, and telemetry. The runtime throws on a missing species atlas and never substitutes generic geometry.
+`src/core/birds` contains pure transition, disturbance, flock-plan, and flight-vector functions; `src/core/dog` contains deterministic Alaskan Husky patrol/flush animation phases. Species profiles, habitat affinities, scoring, and sprite manifests remain immutable data under `src/data`. `BirdEntity`, `BirdSpawnSystem`, and `DogFlushSystem` are presentation adapters: they translate deterministic plans into Phaser animation, mapped contact, depth, input hitboxes, and telemetry. The runtime throws on a missing character atlas and never substitutes generic geometry.

@@ -13,7 +13,12 @@ export default defineConfig({
   plugins: [
     VitePWA({
       registerType: 'prompt',
-      includeAssets: ['assets/icon.svg'],
+      includeAssets: [
+        'assets/icon.svg',
+        'assets/characters/alaska-husky/atlas.png',
+        'assets/characters/alaska-husky/atlas.json',
+        'assets/characters/alaska-husky/preview.png',
+      ],
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,json}'],
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,

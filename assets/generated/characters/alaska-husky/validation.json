@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "validatedAt": "2026-07-22",
+  "characterId": "alaska-husky",
+  "frameGrid": { "columns": 4, "rows": 4, "frameWidth": 128, "frameHeight": 128 },
+  "checks": {
+    "alphaValues": [0, 255],
+    "maximumColorsPerFrameIncludingTransparency": 32,
+    "nearestNeighborProcessed": true,
+    "normalizedPawBaselineY": 112,
+    "proprietarySourceArtworkUsed": false
+  },
+  "sha256": {
+    "keyed/alaska-husky-master.png": "96eaf4ed8b1d0907f48b4cf5e5636f19fea169359224cbc959b847eec745d3a6",
+    "processed/alaska-husky-atlas.png": "e90a94884440f2394264c9fad48e43a87f899e1ae0b6bced1d237bc6a1dacd82",
+    "public/assets/characters/alaska-husky/atlas.png": "e90a94884440f2394264c9fad48e43a87f899e1ae0b6bced1d237bc6a1dacd82",
+    "public/assets/characters/alaska-husky/atlas.json": "fa5c594a8a51a8e622dc58de95d691525b277df4260cee011aba6750e619e898",
+    "public/assets/characters/alaska-husky/preview.png": "423b02734704f16422d6c0b6e688d7986261c7159ece146a7e5fb374b71f132d"
+  }
+}

@@ -239,12 +239,24 @@ footer {
   font-size: 6vw;
   color: #0a1a22;
 }
+.menu-husky {
+  position: absolute;
+  right: 13%;
+  bottom: 7%;
+  width: 128px;
+  height: 128px;
+  z-index: 1;
+  image-rendering: pixelated;
+  background: url('/assets/characters/alaska-husky/atlas.png') 0 0 / 512px 512px no-repeat;
+  filter: drop-shadow(4px 5px 0 #07152188);
+}
 .reeds {
   position: absolute;
   bottom: 0;
   font-size: 8vw;
   color: #172f2d;
   white-space: nowrap;
+  z-index: 2;
 }
 .menu-rail {
   z-index: 3;

@@ -41,6 +41,7 @@ async function startHunt(page: Page, locationIndex = 2) {
   );
   await expect(page.locator('#aim-layer')).toHaveAttribute('data-scene-layers', '4');
   await expect(page.locator('#aim-layer')).toHaveAttribute('data-dog-layer', 'ground');
+  await expect(page.locator('#aim-layer')).toHaveAttribute('data-dog-character', 'alaska-husky');
 }
 
 test('serves transformed modules with JavaScript MIME and loads the menu', async ({
@@ -91,6 +92,12 @@ test('mouse aims and fires exactly once, pause gates fire, and resume restores i
   await expect(surface).toHaveAttribute('data-dog-world-x', /[0-9]+\.[0-9]+/);
   await expect(surface).toHaveAttribute('data-dog-world-y', /[0-9]+\.[0-9]+/);
   await expect(surface).toHaveAttribute('data-dog-display-depth', /[0-9]+\.[0-9]+/);
+  await expect(surface).toHaveAttribute('data-dog-animation-state', /idle|sniff|searchWalk|searchTrot|slowCautious|alert|lookHiddenBird|boundCover|flushReaction|stopWatch|run|turnTransition/);
+  await expect(surface).toHaveAttribute('data-dog-facing', /left|right/);
+  await expect(surface).toHaveAttribute('data-dog-flip-x', /true|false/);
+  await expect(surface).toHaveAttribute('data-dog-frame', /.+/);
+  await expect.poll(async () => surface.getAttribute('data-dog-contact-error')).toBe('0.000');
+  await expect(surface).toHaveAttribute('data-dog-scale', /0\.[0-9]+|1\.[0-9]+/);
   await expect(surface).toHaveAttribute('data-bird-display-depth', /[0-9]+\.[0-9]+/);
   await expect(surface).toHaveAttribute('data-bird-prop-occlusion', /0\.[0-9]+/);
   await expect(surface).toHaveAttribute('data-bird-surface', /water|ground|grass|shore|mud|river|branch|coast/i);
@@ -163,6 +170,7 @@ test('state-aware target hit uses an illustrated atlas bird', async ({ page }) =
 });
 
 test('seeded crane visibly reveals before its bonus window and flight', async ({ page }) => {
+  test.skip(process.env.PLAYWRIGHT_PRODUCTION === '1', 'Deterministic bird overrides are development-only.');
   await page.goto('/?seed=final-qa&debugBirdSpecies=crane&debugBirdSurface=tallGrass&debugBirdState=concealed');
   await enterMenu(page);
   await startHunt(page);
@@ -179,10 +187,11 @@ test('scene-map debug overlay and telemetry survive a mobile resize', async ({ p
   await expect(surface).toHaveAttribute('data-scene-map-debug', 'true');
   await expect.poll(async () => surface.getAttribute('data-scene-region-id')).toMatch(/^copper-/);
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect.poll(async () => Number(await surface.getAttribute('data-dog-world-x'))).toBeGreaterThanOrEqual(0);
-  await expect.poll(async () => Number(await surface.getAttribute('data-dog-world-x'))).toBeLessThanOrEqual(390);
+  await expect.poll(async () => Number(await surface.getAttribute('data-dog-world-x'))).toBeGreaterThanOrEqual(40);
+  await expect.poll(async () => Number(await surface.getAttribute('data-dog-world-x'))).toBeLessThanOrEqual(350);
   await expect.poll(async () => Number(await surface.getAttribute('data-dog-world-y'))).toBeGreaterThan(0);
   await expect.poll(async () => Number(await surface.getAttribute('data-dog-world-y'))).toBeLessThanOrEqual(844);
+  await expect.poll(async () => surface.getAttribute('data-dog-contact-error')).toBe('0.000');
   await expect(surface).toHaveAttribute('data-scene-depth', /0\.[0-9]+/);
   await expect.poll(async () => Number(await surface.getAttribute('data-scene-world-x'))).toBeGreaterThanOrEqual(0);
   await expect.poll(async () => Number(await surface.getAttribute('data-scene-world-x'))).toBeLessThanOrEqual(390);
@@ -193,6 +202,50 @@ test('scene-map debug overlay and telemetry survive a mobile resize', async ({ p
   await expect.poll(async () => Number(await surface.getAttribute('data-scene-prop-world-y'))).toBeGreaterThan(0);
   await expect.poll(async () => Number(await surface.getAttribute('data-scene-prop-world-y'))).toBeLessThanOrEqual(844);
   await page.screenshot({ path: testInfo.outputPath('mobile-scene-map-props-debug.png') });
+});
+
+test('original Alaskan Husky stays mapped, correctly faced, and readable across habitats', async ({ page }, testInfo) => {
+  test.setTimeout(90_000);
+  const habitats = [
+    { name: 'wetland', location: 2 },
+    { name: 'forest', location: 4 },
+    { name: 'tundra', location: 8 },
+    { name: 'snow', location: 10 },
+  ] as const;
+  await page.setViewportSize({ width: 1280, height: 720 });
+  for (const habitat of habitats) {
+    await page.goto(`/?seed=husky-${habitat.name}`);
+    await enterMenu(page);
+    await startHunt(page, habitat.location);
+    const surface = page.locator('#aim-layer');
+    await expect(surface).toHaveAttribute('data-dog-character', 'alaska-husky');
+    await expect(surface).toHaveAttribute('data-dog-frame', /.+/);
+    await expect.poll(async () => surface.getAttribute('data-dog-contact-error')).toBe('0.000');
+    await expect(surface).toHaveAttribute('data-dog-prop-relation', /behind|front|none/);
+    await expect.poll(async () => surface.evaluate((element) => {
+      const facing = (element as HTMLElement).dataset.dogFacing;
+      const flipped = (element as HTMLElement).dataset.dogFlipX === 'true';
+      return (facing === 'left' && flipped) || (facing === 'right' && !flipped);
+    })).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath(`alaska-husky-${habitat.name}.png`) });
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+  const surface = page.locator('#aim-layer');
+  await expect.poll(async () => surface.getAttribute('data-dog-contact-error')).toBe('0.000');
+  await expect.poll(async () => Number(await surface.getAttribute('data-dog-world-x'))).toBeGreaterThanOrEqual(40);
+  await expect.poll(async () => Number(await surface.getAttribute('data-dog-world-x'))).toBeLessThanOrEqual(350);
+  await page.screenshot({ path: testInfo.outputPath('alaska-husky-snow-mobile.png') });
+});
+
+test('reduced motion uses static Alaskan Husky poses without changing mapped contact', async ({ page }) => {
+  await page.evaluate(() => localStorage.setItem('adh-Reduced motion', 'true'));
+  await page.goto('/?seed=husky-reduced-motion');
+  await enterMenu(page);
+  await startHunt(page, 2);
+  const surface = page.locator('#aim-layer');
+  await expect(surface).toHaveAttribute('data-dog-reduced-motion', 'true');
+  await expect.poll(async () => surface.getAttribute('data-dog-contact-error')).toBe('0.000');
+  await expect(surface).toHaveAttribute('data-dog-frame', /.+/);
 });
 
 test('captures distinct scene-map prop compositions across six habitat families', async ({ page }, testInfo) => {
@@ -218,6 +271,7 @@ test('captures distinct scene-map prop compositions across six habitat families'
 });
 
 test('anchors water, ground, snow, rock, branch, and tall-grass starts to semantic contacts', async ({ page }, testInfo) => {
+  test.skip(process.env.PLAYWRIGHT_PRODUCTION === '1', 'Deterministic bird overrides are development-only.');
   test.setTimeout(120_000);
   const cases = [
     { name: 'water', location: 1, id: 'cook', species: 'harlequin', surface: 'openWater', state: 'swimming', contact: 'waterline' },
@@ -270,13 +324,17 @@ test('field guide, manifest, and responsive mobile layout', async ({ page }) => 
   expect(Object.keys((await atlas.json()).frames)).toHaveLength(32);
   for (const asset of [
     '/assets/scenes/copper.png',
-    '/assets/characters/retriever.png',
+    '/assets/characters/alaska-husky/atlas.png',
+    '/assets/characters/alaska-husky/preview.png',
     '/assets/habitat/regions/coastal-delta.png',
   ]) {
     const response = await page.request.get(asset);
     expect(response.ok()).toBeTruthy();
     expect(response.headers()['content-type']).toContain('image/png');
   }
+  const huskyAtlas = await page.request.get('/assets/characters/alaska-husky/atlas.json');
+  expect(huskyAtlas.ok()).toBeTruthy();
+  expect(Object.keys((await huskyAtlas.json()).frames)).toHaveLength(16);
   const manifest = await page.request.get('/manifest.webmanifest');
   expect(manifest.ok()).toBeTruthy();
   await page.setViewportSize({ width: 390, height: 844 });

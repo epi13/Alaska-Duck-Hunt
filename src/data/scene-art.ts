@@ -34,10 +34,3 @@ export const habitatAtlasPaths: Record<HabitatAtlas, string> = {
   'aleutian-coast': 'assets/habitat/regions/aleutian-coast.png',
   'winter-willow': 'assets/habitat/regions/winter-willow.png',
 };
-
-export const retrieverSheet = {
-  key: 'alaska-field-retriever',
-  path: 'assets/characters/retriever.png',
-  frameWidth: 128,
-  frameHeight: 128,
-} as const;

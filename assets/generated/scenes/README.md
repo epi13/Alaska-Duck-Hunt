@@ -6,8 +6,8 @@ These are original ImageGen production assets created on 2026-07-20 from the lic
 
 - `source/*.png`: full-resolution opaque generation outputs for the 12 location plates.
 - `public/assets/scenes/*.png`: centered 1280×720 nearest-neighbor production plates.
-- `assets/generated/characters/keyed/retriever.png`: keyed 4×4 source sheet.
-- `public/assets/characters/retriever.png`: 512×512 alpha sheet, 128×128 frames.
+- `assets/generated/characters/alaska-husky/keyed/alaska-husky-master.png`: keyed 4×4 source master.
+- `public/assets/characters/alaska-husky/`: named 512×512 alpha atlas, JSON metadata, and preview strip.
 - `assets/generated/habitat/keyed/*.png`: keyed 4×2 source atlases.
 - `public/assets/habitat/*.png`: 1024×512 alpha atlases, 256×256 frames.
 
@@ -32,4 +32,4 @@ Location-specific additions were:
 - Willow: deep winter sky, Alaska Range, wind-sculpted snow and bare willow bands.
 - River flats: warm migration evening, flooded meadow, distant original field barn and muddy dog trail.
 
-The retriever prompt requested a distinct original black-and-chocolate Alaska field dog in a strict 4×4 right-facing sheet: run, sniff/search, bound, and retrieve/celebrate rows. The three habitat prompts requested strict 4×2 atlases for wetland/delta, forest/alpine, and arctic/winter occluders.
+The current dog pipeline is documented separately in `docs/alaskan-husky.md`: it uses a research-informed, original working Alaskan Husky with named patrol, flush, turn, and results poses. The three habitat prompts requested strict 4×2 atlases for wetland/delta, forest/alpine, and arctic/winter occluders.

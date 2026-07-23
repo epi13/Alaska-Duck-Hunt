@@ -48,7 +48,7 @@ function splash() {
 }
 function menu() {
   shell(
-    `<section class="menu-layout"><div class="menu-copy"><h1>THE MIGRATION<br>IS <em>UNDERWAY.</em></h1><p>Track the wind. Know the silhouette. Make every shell count across Alaska’s wildest flyways.</p><button class="primary large" data-go="campaign">CONTINUE CAMPAIGN <span>→</span></button><button data-go="modes">CHOOSE HUNT MODE</button></div><div class="menu-art" role="img" aria-label="Pixel art pintails crossing an Alaskan mountain delta"><div class="sun"></div><div class="mountains">▲ ▲ ▲</div><div class="bird-flight">⌁ ︿ ⌁</div><div class="reeds">╱╲╱╲╱╲╱╲╱╲</div></div><nav class="menu-rail"><button data-go="guide">${icon('◈')}<span>FIELD GUIDE<small>${species.length} species logged</small></span></button><button data-go="stats">${icon('⌁')}<span>RECORDS<small>Local profile</small></span></button><button data-go="achievements">${icon('✦')}<span>ACHIEVEMENTS<small>12 challenges</small></span></button><button data-go="controller">${icon('⌁')}<span>CONTROLLER LAB<small>Simulator ready</small></span></button></nav></section>`,
+    `<section class="menu-layout"><div class="menu-copy"><h1>THE MIGRATION<br>IS <em>UNDERWAY.</em></h1><p>Track the wind. Know the silhouette. Make every shell count across Alaska’s wildest flyways.</p><button class="primary large" data-go="campaign">CONTINUE CAMPAIGN <span>→</span></button><button data-go="modes">CHOOSE HUNT MODE</button></div><div class="menu-art" role="img" aria-label="Pixel art pintails and an Alaskan Husky in a mountain delta"><div class="sun"></div><div class="mountains">▲ ▲ ▲</div><div class="bird-flight">⌁ ︿ ⌁</div><div class="menu-husky" role="img" aria-label="Original pixel-art Alaskan Husky field companion"></div><div class="reeds">╱╲╱╲╱╲╱╲╱╲</div></div><nav class="menu-rail"><button data-go="guide">${icon('◈')}<span>FIELD GUIDE<small>${species.length} species logged</small></span></button><button data-go="stats">${icon('⌁')}<span>RECORDS<small>Local profile</small></span></button><button data-go="achievements">${icon('✦')}<span>ACHIEVEMENTS<small>12 challenges</small></span></button><button data-go="controller">${icon('⌁')}<span>CONTROLLER LAB<small>Simulator ready</small></span></button></nav></section>`,
   );
   bindNav();
 }
@@ -95,7 +95,7 @@ function startHunt() {
   const selectedLocation = locations[locationIndex] ?? locations[2]!;
   const selectedSceneMap = sceneMapByLocation.get(selectedLocation.id);
   const selectedPropLayout = scenePropLayoutByLocation.get(selectedLocation.id);
-  root.innerHTML = `<div id="game"></div><div id="aim-layer" aria-label="Hunt aiming surface" data-shots="0" data-sprite-birds="0" data-scene-layers="4" data-dog-layer="ground" data-location-id="${selectedLocation.id}" data-scene-background="assets/scenes/${selectedLocation.id}.png" data-scene-map-regions="${selectedSceneMap?.regions.length ?? 0}" data-scene-prop-count="${selectedPropLayout?.placements.length ?? 0}" data-scene-prop-invalid="0" data-dog-path-ids="${selectedSceneMap?.dogPatrolPaths.map(({ id }) => id).join(',') ?? ''}" data-scene-map-debug="${new URLSearchParams(location.search).get('debugSceneMap') === '1'}"></div><div class="hud"><div><small>SCORE</small><b id="score">000000</b><span id="combo">COMBO ×0</span></div><div class="objective">PINTAIL • FIELD ROUND</div><div><small>TIME</small><b id="time">01:00</b></div></div><div class="ammo"><small>SHELLS</small><b id="ammo">●●●●●</b><span>R RELOAD</span></div><div id="notice" aria-live="polite"></div><div id="pause" class="overlay hidden"><h2>HUNT PAUSED</h2><button id="resume">RESUME</button><button id="quit">RETURN TO MENU</button></div>`;
+  root.innerHTML = `<div id="game"></div><div id="aim-layer" aria-label="Hunt aiming surface with working Alaskan Husky companion" data-shots="0" data-sprite-birds="0" data-scene-layers="4" data-dog-character="alaska-husky" data-dog-animation-state="idle" data-dog-layer="ground" data-location-id="${selectedLocation.id}" data-scene-background="assets/scenes/${selectedLocation.id}.png" data-scene-map-regions="${selectedSceneMap?.regions.length ?? 0}" data-scene-prop-count="${selectedPropLayout?.placements.length ?? 0}" data-scene-prop-invalid="0" data-dog-path-ids="${selectedSceneMap?.dogPatrolPaths.map(({ id }) => id).join(',') ?? ''}" data-scene-map-debug="${new URLSearchParams(location.search).get('debugSceneMap') === '1'}"></div><div class="hud"><div><small>SCORE</small><b id="score">000000</b><span id="combo">COMBO ×0</span></div><div class="objective">PINTAIL • FIELD ROUND</div><div><small>TIME</small><b id="time">01:00</b></div></div><div class="ammo"><small>SHELLS</small><b id="ammo">●●●●●</b><span>R RELOAD</span></div><div id="notice" aria-live="polite"></div><div id="pause" class="overlay hidden"><h2>HUNT PAUSED</h2><button id="resume">RESUME</button><button id="quit">RETURN TO MENU</button></div>`;
   const scene = new HuntScene(locationIndex);
   game = new Phaser.Game({
     type: Phaser.AUTO,
@@ -271,10 +271,19 @@ function startHunt() {
       );
       scene.events.on(
         'dog-map-position',
-        ({ pathId, worldX, worldY, depth, propId, relation }: { pathId: string; worldX: number; worldY: number; depth: number; propId?: string; relation: string }) => {
+        ({ characterId, animationState, frame, facing, flipX, reducedMotion, pathId, worldX, worldY, renderedContactY, contactError, scale, depth, propId, relation }: { characterId: string; animationState: string; frame: string | number; facing: string; flipX: boolean; reducedMotion: boolean; pathId: string; worldX: number; worldY: number; renderedContactY: number; contactError: number; scale: number; depth: number; propId?: string; relation: string }) => {
+          aimLayer?.setAttribute('data-dog-character', characterId);
+          aimLayer?.setAttribute('data-dog-animation-state', animationState);
+          aimLayer?.setAttribute('data-dog-frame', String(frame));
+          aimLayer?.setAttribute('data-dog-facing', facing);
+          aimLayer?.setAttribute('data-dog-flip-x', String(flipX));
+          aimLayer?.setAttribute('data-dog-reduced-motion', String(reducedMotion));
           aimLayer?.setAttribute('data-dog-path-id', pathId);
           aimLayer?.setAttribute('data-dog-world-x', worldX.toFixed(2));
           aimLayer?.setAttribute('data-dog-world-y', worldY.toFixed(2));
+          aimLayer?.setAttribute('data-dog-contact-world-y', renderedContactY.toFixed(2));
+          aimLayer?.setAttribute('data-dog-contact-error', contactError.toFixed(3));
+          aimLayer?.setAttribute('data-dog-scale', scale.toFixed(3));
           aimLayer?.setAttribute('data-dog-display-depth', depth.toFixed(2));
           aimLayer?.setAttribute('data-dog-prop-id', propId ?? 'none');
           aimLayer?.setAttribute('data-dog-prop-relation', relation);
@@ -459,7 +468,7 @@ function legal() {
 }
 function credits() {
   shell(
-    `<section class="page"><div class="section-title"><p>MADE IN ALASKA</p><h1>CREDITS</h1></div><p>Original game design, code-native pixel art, procedural audio and writing created for Alaska Duck Hunt. Regulatory context references Alaska Department of Fish and Game and U.S. Fish & Wildlife Service public information.</p><p>MIT licensed code and original generated assets. No Nintendo assets or intellectual property are included.</p></section>`,
+    `<section class="page"><div class="section-title"><p>MADE IN ALASKA</p><h1>CREDITS</h1></div><p>Original game design, code-native pixel art, procedural audio and writing created for Alaska Duck Hunt. The original Alaskan Husky field companion was developed from a research brief informed by public National Park Service material about Denali working sled dogs.</p><p>Regulatory context references Alaska Department of Fish and Game and U.S. Fish & Wildlife Service public information. MIT licensed code and original generated assets. No Nintendo assets or proprietary character art are included.</p></section>`,
   );
 }
 window.addEventListener('keydown', (e) => {

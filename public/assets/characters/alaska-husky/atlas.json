@@ -1,0 +1,32 @@
+{
+  "frames": {
+    "idle/0": { "frame": { "x": 0, "y": 0, "w": 128, "h": 128 } },
+    "sniff/0": { "frame": { "x": 128, "y": 0, "w": 128, "h": 128 } },
+    "search-walk/0": { "frame": { "x": 256, "y": 0, "w": 128, "h": 128 } },
+    "search-walk/1": { "frame": { "x": 384, "y": 0, "w": 128, "h": 128 } },
+    "search-trot/0": { "frame": { "x": 0, "y": 128, "w": 128, "h": 128 } },
+    "search-trot/1": { "frame": { "x": 128, "y": 128, "w": 128, "h": 128 } },
+    "run/0": { "frame": { "x": 256, "y": 128, "w": 128, "h": 128 } },
+    "run/1": { "frame": { "x": 384, "y": 128, "w": 128, "h": 128 } },
+    "slow-cautious/0": { "frame": { "x": 0, "y": 256, "w": 128, "h": 128 } },
+    "alert/0": { "frame": { "x": 128, "y": 256, "w": 128, "h": 128 } },
+    "look-hidden-bird/0": { "frame": { "x": 256, "y": 256, "w": 128, "h": 128 } },
+    "turn-transition/0": { "frame": { "x": 384, "y": 256, "w": 128, "h": 128 } },
+    "bound-cover/0": { "frame": { "x": 0, "y": 384, "w": 128, "h": 128 } },
+    "flush-reaction/0": { "frame": { "x": 128, "y": 384, "w": 128, "h": 128 } },
+    "stop-watch/0": { "frame": { "x": 256, "y": 384, "w": 128, "h": 128 } },
+    "celebrate/0": { "frame": { "x": 384, "y": 384, "w": 128, "h": 128 } }
+  },
+  "meta": {
+    "app": "Alaska Duck Hunt original asset pipeline",
+    "version": "1.0",
+    "image": "atlas.png",
+    "format": "RGBA8888",
+    "size": { "w": 512, "h": 512 },
+    "scale": "1",
+    "characterId": "alaska-husky",
+    "canonicalFacing": "right",
+    "contactAnchor": { "x": 0.5, "y": 0.875 },
+    "license": "Original generated artwork; repository MIT license"
+  }
+}

@@ -3,7 +3,8 @@ import { SeededRandom } from '../core/rng';
 import { locations } from '../data/content';
 import { birdScoringBySpecies, scoreBird } from '../data/bird-scoring';
 import { birdSprites } from '../data/bird-sprites';
-import { habitatAtlasPaths, retrieverSheet, sceneArt, sceneArtByLocation, type SceneArt } from '../data/scene-art';
+import { habitatAtlasPaths, sceneArt, sceneArtByLocation, type SceneArt } from '../data/scene-art';
+import { huskySprite } from '../data/husky-sprites';
 import { sceneMapByLocation } from '../data/scene-maps';
 import { scenePropLayoutByLocation } from '../data/scene-props';
 import { BirdSpawnSystem } from './systems/BirdSpawnSystem';
@@ -43,7 +44,7 @@ export class HuntScene extends Phaser.Scene {
     const requestedArt = sceneArtByLocation.get(requestedId) ?? sceneArt[2];
     if (requestedArt) this.load.image(`scene-${requestedArt.locationId}`, requestedArt.background);
     for (const [key, path] of Object.entries(habitatAtlasPaths)) this.load.spritesheet(`habitat-${key}`, path, { frameWidth: 256, frameHeight: 256 });
-    this.load.spritesheet(retrieverSheet.key, retrieverSheet.path, { frameWidth: retrieverSheet.frameWidth, frameHeight: retrieverSheet.frameHeight });
+    this.load.atlas(huskySprite.textureKey, huskySprite.imagePath, huskySprite.atlasPath);
   }
 
   create(data: { seed?: string; location?: number } = {}) {
@@ -167,7 +168,9 @@ export class HuntScene extends Phaser.Scene {
     this.timeLeft -= delta / 1_000;
     if (this.timeLeft <= 0) {
       this.ended = true;
-      this.events.emit('complete', { score: this.score, hits: this.hits, shots: this.shots, accuracy: this.shots ? Math.round((this.hits / this.shots) * 100) : 0 });
+      this.dogSystem?.celebrate();
+      const result = { score: this.score, hits: this.hits, shots: this.shots, accuracy: this.shots ? Math.round((this.hits / this.shots) * 100) : 0 };
+      this.time.delayedCall(650, () => this.events.emit('complete', result));
     }
     this.emitHud();
   }
