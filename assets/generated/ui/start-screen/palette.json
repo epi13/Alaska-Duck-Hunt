@@ -1,0 +1,15 @@
+{
+  "name": "Copper River start UI",
+  "source": "Existing Alaska Duck Hunt production palette",
+  "colors": {
+    "nightNavy": "#06131f",
+    "panelNavy": "#0a2132",
+    "panelBlue": "#12364b",
+    "iceText": "#a8c9d8",
+    "paperText": "#f3e7cf",
+    "focusAmber": "#f2a51f",
+    "focusLight": "#ffe0a0",
+    "offlineGreen": "#8dc63f",
+    "pixelBorder": "#70818a"
+  }
+}

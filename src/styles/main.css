@@ -1,6 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Chakra+Petch:wght@500;600;700&display=swap');
 :root {
-  font-family: 'Barlow Condensed', system-ui, sans-serif;
+  font-family: 'Arial Narrow', 'Roboto Condensed', system-ui, sans-serif;
   color: #f2e7d0;
   background: #071521;
   --navy: #071521;
@@ -56,6 +55,11 @@ button:focus-visible {
   color: #10202b;
   border-color: #ffe1a1;
   font-weight: 800;
+}
+.primary:hover,
+.primary:focus-visible {
+  background: #ffc147;
+  color: #071521;
 }
 .large {
   padding: 1rem 1.4rem;
@@ -117,66 +121,319 @@ footer {
   font-size: 0.7rem;
   letter-spacing: 0.12em;
 }
-.splash {
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  background:
-    linear-gradient(#0b1f2e99, #071521),
-    url('/docs/images/gameplay-concept.png') center/cover;
-  color: #f5ead4;
-}
-.splash:after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: repeating-linear-gradient(0deg, transparent 0 3px, #0002 4px);
-  pointer-events: none;
-}
-.splash > * {
-  z-index: 1;
-}
-.splash h1 {
-  font-size: clamp(4rem, 10vw, 9rem);
-  line-height: 0.72;
-  letter-spacing: -0.03em;
-  margin: 1rem;
-}
-.splash strong {
-  color: var(--amber);
-}
-.splash p {
-  font-family: 'Chakra Petch';
-  letter-spacing: 0.35em;
-}
-.splash small {
-  margin-top: 1.5rem;
-  color: #a3b8c0;
-}
-.mountain-mark {
-  font-size: 5rem;
-  color: #f1e5cb;
-  line-height: 0.5;
-}
-.mountain-mark i {
-  color: var(--amber);
-}
-.menu-layout {
-  min-height: calc(100vh - 112px);
-  display: grid;
-  grid-template-columns: minmax(320px, 46%) 1fr;
-  grid-template-rows: 1fr auto;
-  padding: clamp(2rem, 6vw, 6rem);
+.front-door {
+  isolation: isolate;
+  min-height: 100svh;
   position: relative;
   overflow: hidden;
+  background:
+    linear-gradient(90deg, #07152182 0, transparent 48%),
+    url('/assets/ui/start-copper-river.webp') center / cover no-repeat;
+  display: grid;
+  grid-template-columns: minmax(340px, 35vw) 1fr;
+  grid-template-rows: minmax(0, 1fr) auto auto;
 }
-.menu-copy {
+.front-door::after {
+  content: '';
+  position: absolute;
+  z-index: 20;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(0deg, transparent 0 3px, #06131b12 4px);
+}
+.front-panel {
+  z-index: 4;
+  position: relative;
+  grid-row: 1 / 3;
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  justify-content: center;
+  padding: clamp(1.5rem, 3.4vw, 4.5rem);
+  padding-bottom: clamp(2rem, 7vw, 7rem);
+  background: linear-gradient(135deg, #122d3bf2, #071521f7);
+  border-right: 4px solid #9e8d72;
+  box-shadow:
+    8px 0 0 #071521aa,
+    18px 0 36px #07152188;
+}
+.start-screen .front-panel {
+  padding-bottom: clamp(1.5rem, 3vw, 3.5rem);
+}
+.pixel-frame::before {
+  content: '';
+  position: absolute;
+  inset: 14px;
+  border: 1px solid #f2e7d026;
+  pointer-events: none;
+}
+.front-panel h1 {
+  position: relative;
+  margin: 0;
+  line-height: 0.75;
+  letter-spacing: -0.055em;
+  text-shadow: 4px 5px 0 #06131b;
+}
+.front-panel h1 span,
+.front-panel h1 strong {
+  display: block;
+}
+.front-panel h1 span {
+  font-size: clamp(3.5rem, 6.4vw, 7.2rem);
+  color: #f2e7d0;
+}
+.front-panel h1 strong {
+  font-size: clamp(3.25rem, 6vw, 6.7rem);
+  color: var(--amber);
+}
+.title-mountains {
+  width: 92px;
+  height: 46px;
+  margin-bottom: 1.25rem;
+  background:
+    linear-gradient(135deg, transparent 46%, #f2e7d0 47% 57%, transparent 58%) 0 0 / 48px 46px,
+    linear-gradient(225deg, transparent 46%, var(--amber) 47% 57%, transparent 58%) 44px 8px / 48px
+      38px;
+}
+.front-subtitle {
+  max-width: 450px;
+  margin: 1.7rem 0 2.2rem;
+  color: #b8d0d8;
+  font-family: ui-monospace, 'Cascadia Mono', monospace;
+  font-size: clamp(0.67rem, 0.9vw, 0.86rem);
+  letter-spacing: 0.2em;
+  line-height: 1.6;
+}
+.front-actions {
+  display: grid;
+  gap: 0.72rem;
+  width: min(100%, 420px);
+}
+.front-actions button,
+.menu-panel > button {
+  min-height: 52px;
+  border-width: 2px;
+  box-shadow: 4px 4px 0 #06131b;
+}
+.secondary-action {
+  background: #102c3bde;
+}
+.front-quick-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.72rem;
+}
+.front-quick-actions button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  font-size: 0.8rem;
+}
+.menu-icon {
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: square;
+  stroke-linejoin: miter;
+}
+.input-prompt {
+  margin: 1.5rem 0 0;
+  color: #d4e2e4;
+  font:
+    700 0.7rem ui-monospace,
+    'Cascadia Mono',
+    monospace;
+  letter-spacing: 0.13em;
+}
+.input-prompt span {
+  color: var(--amber);
+  padding: 0 0.35rem;
+}
+.front-wildlife {
+  position: absolute;
   z-index: 2;
-  align-self: center;
-  max-width: 610px;
+  inset: 0;
+  pointer-events: none;
+}
+.front-bird {
+  position: absolute;
+  left: 26%;
+  width: 128px;
+  height: 128px;
+  animation: bird-cross var(--cross-duration) linear var(--cross-delay) infinite;
+  filter: drop-shadow(4px 5px 1px #07152170);
+}
+.front-bird i {
+  display: block;
+  width: 128px;
+  height: 128px;
+  background: url('/assets/birds/mallard/preview.png') 0 0 / 512px 128px no-repeat;
+  animation: front-flap var(--flap-duration) steps(4) var(--flap-delay) infinite;
+}
+.bird-near {
+  --cross-duration: 16s;
+  --cross-delay: -4s;
+  --flap-duration: 620ms;
+  --flap-delay: -170ms;
+  top: 22%;
+  transform: scale(1.08);
+}
+.bird-mid {
+  --cross-duration: 23s;
+  --cross-delay: -13s;
+  --flap-duration: 760ms;
+  --flap-delay: -440ms;
+  top: 12%;
+  opacity: 0.9;
+  transform: scale(0.72);
+}
+.bird-far {
+  --cross-duration: 31s;
+  --cross-delay: -22s;
+  --flap-duration: 900ms;
+  --flap-delay: -650ms;
+  top: 33%;
+  opacity: 0.74;
+  transform: scale(0.42);
+}
+.front-husky {
+  position: absolute;
+  right: clamp(5%, 11vw, 13%);
+  bottom: 86px;
+  width: 128px;
+  height: 128px;
+  background: url('/assets/characters/alaska-husky/preview.png') 0 0 / 512px 128px no-repeat;
+  filter: drop-shadow(4px 6px 0 #07152188);
+  animation: front-husky-idle 1.7s steps(4) infinite;
+}
+@keyframes bird-cross {
+  from {
+    left: 26%;
+  }
+  to {
+    left: 105%;
+  }
+}
+@keyframes front-flap {
+  to {
+    background-position-x: -512px;
+  }
+}
+@keyframes front-husky-idle {
+  to {
+    background-position-x: -512px;
+  }
+}
+.front-destinations {
+  z-index: 7;
+  grid-column: 2;
+  grid-row: 2;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  align-self: end;
+  margin: 0 1.25rem 1.1rem;
+  border: 2px solid #9e8d72;
+  box-shadow: 5px 6px 0 #071521cc;
+}
+.front-destinations button {
+  min-width: 0;
+  min-height: 80px;
+  border: 0;
+  border-right: 1px solid #5f6e72;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.7rem;
+  text-align: left;
+  background: #0a1e2be8;
+}
+.front-destinations button:last-child {
+  border-right: 0;
+}
+.front-destinations .menu-icon {
+  color: var(--amber);
+  width: 28px;
+  height: 28px;
+}
+.front-destinations span,
+.front-destinations small {
+  display: block;
+}
+.front-destinations span {
+  min-width: 0;
+  font-weight: 800;
+}
+.front-destinations small {
+  margin-top: 0.2rem;
+  overflow: hidden;
+  color: #a6bdc5;
+  font-size: 0.67rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-overflow: ellipsis;
+  text-transform: none;
+  white-space: nowrap;
+}
+.front-progress {
+  z-index: 8;
+  grid-column: 1 / -1;
+  grid-row: 3;
+  min-height: 62px;
+  display: grid;
+  grid-template-columns: minmax(280px, 1.25fr) minmax(220px, 1fr) auto minmax(220px, auto);
+  align-items: center;
+  gap: 1.25rem;
+  padding: 0.45rem clamp(1rem, 2.6vw, 3rem);
+  background: #071521f5;
+  border-top: 2px solid #9e8d72;
+  font-family: ui-monospace, 'Cascadia Mono', monospace;
+}
+.front-progress > div,
+.next-location {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+.front-progress b,
+.front-progress small {
+  display: block;
+}
+.front-progress b {
+  color: #e5d9c0;
+  font-size: 0.72rem;
+  letter-spacing: 0.07em;
+}
+.front-progress small {
+  margin-top: 0.18rem;
+  color: #8da9b2;
+  font-size: 0.62rem;
+}
+.next-location img {
+  width: 62px;
+  height: 38px;
+  object-fit: cover;
+  border: 2px solid #788885;
+}
+.offline-status span {
+  width: 9px;
+  height: 9px;
+  background: var(--green);
+  box-shadow: 0 0 0 2px #2d4d33;
+}
+.front-legal {
+  justify-self: end;
+  text-align: right;
+}
+.main-menu-screen .front-panel {
+  padding-bottom: clamp(7rem, 13vw, 11rem);
+}
+.main-menu-screen .front-panel > button {
+  width: min(100%, 390px);
+  margin-top: 0.65rem;
 }
 .menu-copy h1,
 .section-title h1,
@@ -186,108 +443,6 @@ footer {
   line-height: 0.82;
   margin: 0.35rem 0 1.5rem;
   letter-spacing: -0.03em;
-}
-.menu-copy em {
-  font-style: normal;
-  color: var(--amber);
-}
-.menu-copy p {
-  font-size: 1.3rem;
-  color: #b5c9ce;
-  max-width: 500px;
-  line-height: 1.5;
-}
-.menu-copy > button {
-  display: block;
-  margin-top: 0.8rem;
-  min-width: 290px;
-}
-.menu-art {
-  position: absolute;
-  right: -6vw;
-  top: 2vh;
-  width: 60vw;
-  height: 70vh;
-  overflow: hidden;
-  clip-path: polygon(10% 0, 100% 0, 100% 100%, 0 100%);
-  background: linear-gradient(#183b4b, #637e88 43%, #d29e51 44%, #29483e 67%, #0c2630 68%);
-  color: #e8d7b4;
-  font-family: monospace;
-}
-.sun {
-  position: absolute;
-  right: 20%;
-  top: 15%;
-  width: 140px;
-  height: 140px;
-  background: #efb44e;
-  border-radius: 50%;
-  box-shadow: 0 0 60px #efb44e88;
-}
-.mountains {
-  position: absolute;
-  bottom: 25%;
-  font-size: 18vw;
-  letter-spacing: -0.2em;
-  color: #8ea2a1;
-  text-shadow: 0 20px #425d60;
-}
-.bird-flight {
-  position: absolute;
-  top: 28%;
-  left: 32%;
-  font-size: 6vw;
-  color: #0a1a22;
-}
-.menu-husky {
-  position: absolute;
-  right: 13%;
-  bottom: 7%;
-  width: 128px;
-  height: 128px;
-  z-index: 1;
-  image-rendering: pixelated;
-  background: url('/assets/characters/alaska-husky/atlas.png') 0 0 / 512px 512px no-repeat;
-  filter: drop-shadow(4px 5px 0 #07152188);
-}
-.reeds {
-  position: absolute;
-  bottom: 0;
-  font-size: 8vw;
-  color: #172f2d;
-  white-space: nowrap;
-  z-index: 2;
-}
-.menu-rail {
-  z-index: 3;
-  grid-column: 1/-1;
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 1px;
-  background: #55606a;
-  border: 1px solid #55606a;
-}
-.menu-rail button {
-  display: flex;
-  text-align: left;
-  gap: 1rem;
-  align-items: center;
-  background: #0d2230;
-  border: 0;
-}
-.menu-rail span span,
-.menu-rail b {
-  display: block;
-}
-.menu-rail small {
-  display: block;
-  color: #829ba6;
-  text-transform: none;
-  letter-spacing: 0;
-}
-.pixel-icon {
-  font-size: 2rem;
-  color: var(--amber);
 }
 .page {
   max-width: 1200px;
@@ -634,26 +789,6 @@ a {
     font-size: 0.72rem;
     padding: 0.5rem;
   }
-  .menu-layout {
-    display: block;
-    padding: 2rem 1rem;
-  }
-  .menu-art {
-    opacity: 0.45;
-    width: 100%;
-    right: 0;
-  }
-  .menu-copy {
-    position: relative;
-  }
-  .menu-copy h1 {
-    font-size: 3.7rem;
-  }
-  .menu-rail {
-    position: relative;
-    margin-top: 2rem;
-    grid-template-columns: 1fr 1fr;
-  }
   .mode-list,
   .map-grid,
   .guide-grid {
@@ -695,8 +830,223 @@ a {
   .result-grid {
     grid-template-columns: 1fr 1fr;
   }
-  .splash h1 {
-    font-size: 4rem;
+}
+@media (max-aspect-ratio: 4 / 3) and (min-width: 801px) {
+  .front-door {
+    grid-template-columns: minmax(330px, 42vw) 1fr;
+  }
+  .front-destinations {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .front-destinations button {
+    min-height: 66px;
+  }
+  .front-progress {
+    grid-template-columns: 1.4fr 1fr auto;
+  }
+  .front-legal {
+    display: none;
+  }
+}
+@media (max-width: 1024px) {
+  .front-door {
+    background-position: 58% center;
+  }
+  .front-destinations {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .front-progress {
+    grid-template-columns: 1.3fr 1fr auto;
+  }
+  .front-legal {
+    display: none;
+  }
+}
+@media (max-width: 600px) {
+  .front-door {
+    min-height: 100svh;
+    overflow-y: auto;
+    background-position: 66% center;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto;
+  }
+  .front-door::before {
+    content: '';
+    position: absolute;
+    z-index: 1;
+    inset: 0;
+    background: linear-gradient(180deg, #0715212b 0, #071521a6 47%, #071521 75%);
+  }
+  .front-panel {
+    grid-column: 1;
+    grid-row: 1;
+    min-height: 66svh;
+    justify-content: flex-end;
+    padding: 1.1rem;
+    padding-top: 9rem;
+    padding-bottom: 1.3rem;
+    background: linear-gradient(180deg, #0715210a 0, #071521eb 48%, #071521fa);
+    border: 0;
+    box-shadow: none;
+  }
+  .start-screen .front-panel {
+    padding: 9rem 1.1rem 1.3rem;
+  }
+  .pixel-frame::before {
+    inset: 9px;
+  }
+  .title-mountains {
+    display: none;
+  }
+  .front-panel h1 span {
+    font-size: clamp(3.2rem, 18vw, 4.6rem);
+  }
+  .front-panel h1 strong {
+    font-size: clamp(3rem, 16.8vw, 4.25rem);
+  }
+  .front-subtitle {
+    margin: 1rem 0 1.1rem;
+    font-size: 0.63rem;
+    letter-spacing: 0.12em;
+  }
+  .front-actions {
+    width: 100%;
+    gap: 0.55rem;
+  }
+  .front-actions button,
+  .menu-panel > button {
+    min-height: 46px;
+  }
+  .input-prompt {
+    margin-top: 0.85rem;
+    text-align: center;
+  }
+  .bird-near {
+    top: 5%;
+    transform: scale(0.72);
+  }
+  .bird-mid {
+    top: 12%;
+    transform: scale(0.5);
+  }
+  .bird-far {
+    top: 20%;
+    transform: scale(0.32);
+  }
+  .front-husky {
+    right: 4%;
+    bottom: auto;
+    top: 24%;
+    transform: scale(0.78);
+    transform-origin: bottom right;
+  }
+  .front-destinations {
+    grid-column: 1;
+    grid-row: 2;
+    grid-template-columns: 1fr 1fr;
+    margin: 0;
+    border-width: 2px 0 0;
+    box-shadow: none;
+  }
+  .front-destinations button {
+    min-height: 68px;
+    padding: 0.55rem 0.65rem;
+    border: 0;
+    border-right: 1px solid #42535b;
+    border-bottom: 1px solid #42535b;
+  }
+  .front-destinations small {
+    font-size: 0.61rem;
+  }
+  .front-progress {
+    grid-column: 1;
+    grid-row: 3;
+    min-height: 74px;
+    grid-template-columns: 1fr auto;
+    gap: 0.5rem;
+    padding: 0.65rem 0.8rem;
+  }
+  .front-progress > div:nth-child(2),
+  .front-progress .front-legal {
+    display: none;
+  }
+  .next-location img {
+    width: 52px;
+    height: 34px;
+  }
+  .offline-status b {
+    font-size: 0.61rem;
+  }
+  .main-menu-screen .front-panel {
+    min-height: 58svh;
+    padding-bottom: 1.3rem;
+  }
+  .main-menu-screen .front-subtitle {
+    margin-bottom: 0.7rem;
+  }
+}
+@media (max-height: 520px) and (orientation: landscape) {
+  .front-door {
+    min-height: 100svh;
+    grid-template-columns: minmax(280px, 41vw) 1fr;
+  }
+  .front-panel {
+    padding: 1rem 1.35rem 4.5rem;
+  }
+  .start-screen .front-panel {
+    padding: 1rem 1.35rem 3rem;
+  }
+  .front-panel h1 span {
+    font-size: clamp(2.4rem, 7vw, 3.8rem);
+  }
+  .front-panel h1 strong {
+    font-size: clamp(2.2rem, 6.6vw, 3.55rem);
+  }
+  .title-mountains {
+    display: none;
+  }
+  .front-subtitle {
+    margin: 0.8rem 0;
+    line-height: 1.35;
+  }
+  .front-actions {
+    gap: 0.35rem;
+  }
+  .front-actions button,
+  .menu-panel > button {
+    min-height: 37px;
+    padding: 0.35rem 0.7rem;
+  }
+  .input-prompt {
+    display: none;
+  }
+  .front-destinations {
+    grid-template-columns: repeat(3, 1fr);
+    margin: 0 0.55rem 0.45rem;
+  }
+  .front-destinations button {
+    min-height: 48px;
+    padding: 0.3rem 0.5rem;
+  }
+  .front-destinations .menu-icon {
+    width: 21px;
+    height: 21px;
+  }
+  .front-progress {
+    min-height: 48px;
+    grid-template-columns: 1fr auto;
+    padding-block: 0.25rem;
+  }
+  .front-progress > div:nth-child(2),
+  .front-progress .front-legal {
+    display: none;
+  }
+  .front-husky {
+    bottom: 48px;
+    transform: scale(0.78);
+  }
+  .main-menu-screen .front-panel {
+    padding-bottom: 4.5rem;
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -707,4 +1057,18 @@ a {
     transition: none !important;
     animation: none !important;
   }
+}
+.reduce-motion .front-bird,
+.reduce-motion .front-bird i,
+.reduce-motion .front-husky {
+  animation: none;
+}
+.reduce-motion .bird-near {
+  left: 68%;
+}
+.reduce-motion .bird-mid {
+  left: 82%;
+}
+.reduce-motion .bird-far {
+  left: 56%;
 }

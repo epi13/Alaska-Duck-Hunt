@@ -14,6 +14,7 @@
     "test:e2e": "playwright test",
     "generate:assets": "tsx scripts/generate-assets.ts",
     "generate:audio": "tsx scripts/generate-audio-assets.ts",
+    "generate:ui": "tsx scripts/generate-ui-assets.ts",
     "pack:birds": "tsx scripts/pack-bird-atlases.ts",
     "validate:assets": "tsx scripts/validate-assets.ts",
     "check": "npm run typecheck && npm run lint && npm test && npm run build"

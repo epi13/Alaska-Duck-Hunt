@@ -151,4 +151,14 @@ Last updated: 2026-07-22
 
 ## Latest implementation branch
 
-- `fix/valid-surface-state-spawning` — semantic surface-state compatibility, sprite contacts, flock reprojection, and mapped landing anchors.
+- `feat/production-start-menu` — production start screen and main-menu redesign using packaged Alaska scene, bird, and Alaskan Husky artwork.
+
+## Start screen and main menu redesign (2026-07-22)
+
+- Replaced the docs-only splash illustration and CSS/glyph menu wildlife with a layered Copper River production scene, animated Mallard preview sprites, and the packaged Alaskan Husky preview.
+- Added first-launch versus returning-campaign actions, direct Hunt Modes/Field Guide/Settings access, actual local progress summaries, offline/legal status, and six clearly separated menu destinations.
+- Added responsive compositions for widescreen, 4:3, tablet, portrait phone, and landscape phone plus static reduced-motion wildlife placement.
+- Preserved the generated design concept, prompt/brief, palette, lossless scene master, and licensing notes under `assets/generated/ui/start-screen`; the runtime WebP is under `public/assets/ui` and included in PWA precaching.
+- Added live persistence for best score, best accuracy, completed hunts, total valid hits, species identification, and the next campaign location.
+- Browser plugin availability was checked; it was not installed, so visual QA used the repository's Playwright/Chromium setup as the documented fallback.
+- Validation: `npm run validate:assets`, `npm run check` (60/60 Vitest tests plus production build), and the full 26/26 development Playwright suite passed. Production front-door coverage passed for first/returning launch, keyboard, touch, reduced motion, all required viewport shapes, Field Guide navigation, and packaged WebP delivery.
