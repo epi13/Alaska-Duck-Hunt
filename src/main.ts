@@ -158,6 +158,9 @@ function startHunt() {
       scene.events.on('bird-individual-plans', (plans: object[]) => {
         if (aimLayer) aimLayer.dataset.birdIndividualPlans = JSON.stringify(plans);
       });
+      scene.events.on('bird-animation-telemetry', (animations: object[]) => {
+        if (aimLayer) aimLayer.dataset.birdAnimationTelemetry = JSON.stringify(animations);
+      });
       scene.events.on(
         'bird-spawned',
         ({
@@ -312,13 +315,15 @@ function startHunt() {
       );
       scene.events.on(
         'dog-map-position',
-        ({ characterId, animationState, frame, facing, flipX, reducedMotion, pathId, worldX, worldY, renderedContactY, contactError, scale, depth, propId, relation }: { characterId: string; animationState: string; frame: string | number; facing: string; flipX: boolean; reducedMotion: boolean; pathId: string; worldX: number; worldY: number; renderedContactY: number; contactError: number; scale: number; depth: number; propId?: string; relation: string }) => {
+        ({ characterId, animationState, frame, facing, flipX, reducedMotion, animationPhase, animationRateMultiplier, pathId, worldX, worldY, renderedContactY, contactError, scale, depth, propId, relation }: { characterId: string; animationState: string; frame: string | number; facing: string; flipX: boolean; reducedMotion: boolean; animationPhase: number; animationRateMultiplier: number; pathId: string; worldX: number; worldY: number; renderedContactY: number; contactError: number; scale: number; depth: number; propId?: string; relation: string }) => {
           aimLayer?.setAttribute('data-dog-character', characterId);
           aimLayer?.setAttribute('data-dog-animation-state', animationState);
           aimLayer?.setAttribute('data-dog-frame', String(frame));
           aimLayer?.setAttribute('data-dog-facing', facing);
           aimLayer?.setAttribute('data-dog-flip-x', String(flipX));
           aimLayer?.setAttribute('data-dog-reduced-motion', String(reducedMotion));
+          aimLayer?.setAttribute('data-dog-animation-phase', animationPhase.toFixed(6));
+          aimLayer?.setAttribute('data-dog-animation-rate', animationRateMultiplier.toFixed(6));
           aimLayer?.setAttribute('data-dog-path-id', pathId);
           aimLayer?.setAttribute('data-dog-world-x', worldX.toFixed(2));
           aimLayer?.setAttribute('data-dog-world-y', worldY.toFixed(2));

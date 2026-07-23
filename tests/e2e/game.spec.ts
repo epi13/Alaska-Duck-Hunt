@@ -224,6 +224,37 @@ test('seeded multi-bird flocks render distinct reproducible individuals', async 
     expect(new Set(plans.map(({ animationRateMultiplier }) => animationRateMultiplier)).size).toBeGreaterThan(1);
     expect(new Set(plans.map(({ posePreference }) => posePreference))).toEqual(new Set(['primary', 'alternate']));
     expect(new Set(plans.map(({ individualVisualVariant }) => individualVisualVariant))).toEqual(new Set(['natural', 'alternate']));
+    await expect.poll(async () => {
+      const value = await surface.getAttribute('data-bird-animation-telemetry');
+      if (!value) return 0;
+      return (JSON.parse(value) as Array<{ speciesId: string }>)
+        .filter(({ speciesId }) => speciesId === scenario.species).length;
+    }).toBeGreaterThanOrEqual(4);
+    const animationTelemetry = (JSON.parse((await surface.getAttribute('data-bird-animation-telemetry'))!) as Array<{
+      speciesId: string;
+      individualVisualSeed: number;
+      animationKey: string;
+      frame: string;
+      animationPhase: number;
+      animationRateMultiplier: number;
+      animationStartFrame: number;
+      animationStartCount: number;
+    }>).filter(({ speciesId }) => speciesId === scenario.species);
+    expect(animationTelemetry.every(({ animationKey }) => animationKey !== 'static')).toBe(true);
+    expect(animationTelemetry.every(({ frame }) => frame.length > 0)).toBe(true);
+    expect(animationTelemetry.every(({ animationStartFrame }) => animationStartFrame >= 0)).toBe(true);
+    expect(animationTelemetry.every(({ animationRateMultiplier }) => animationRateMultiplier >= .92 && animationRateMultiplier <= 1.08)).toBe(true);
+    const startsBySeed = new Map(animationTelemetry.map(({ individualVisualSeed, animationKey, animationStartCount }) => [
+      individualVisualSeed,
+      { animationKey, animationStartCount },
+    ]));
+    await page.waitForTimeout(100);
+    const laterTelemetry = JSON.parse((await surface.getAttribute('data-bird-animation-telemetry'))!) as typeof animationTelemetry;
+    const uninterrupted = laterTelemetry.filter(({ individualVisualSeed, animationKey }) => startsBySeed.get(individualVisualSeed)?.animationKey === animationKey);
+    expect(uninterrupted.length).toBeGreaterThan(0);
+    for (const current of uninterrupted) {
+      expect(current.animationStartCount).toBe(startsBySeed.get(current.individualVisualSeed)?.animationStartCount);
+    }
     if (scenario.species === 'snow-goose') {
       expect(new Set(plans.map(({ biologicalVariant }) => biologicalVariant))).toEqual(new Set(['white', 'blue']));
       snowGooseReplay = serialized!;

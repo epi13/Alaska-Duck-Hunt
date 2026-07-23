@@ -75,12 +75,15 @@ export class BirdSpawnSystem {
         scaleMultiplier: plan.scaleMultiplier,
         animationPhase: plan.animationPhase,
         animationRateMultiplier: plan.animationRateMultiplier,
+        idleDelay: plan.idleDelay,
+        preferredIdleAnimation: plan.preferredIdleAnimation,
         posePreference: plan.posePreference,
         speedOffset: plan.speedOffset,
         reactionOffsetMs: plan.reactionOffsetMs,
         formationOffsetX: plan.formationOffsetX,
         formationOffsetY: plan.formationOffsetY,
       })));
+      this.scene.events.emit('bird-animation-telemetry', this.birds.map((bird) => bird.animationTelemetry));
     }
     const target = this.birds.find((bird) => bird.active && bird.targetable);
     if (target) this.scene.events.emit('bird-target', { speciesId: target.plan.speciesId, state: target.state, ...target.hitCenter, protected: target.protectedBird });

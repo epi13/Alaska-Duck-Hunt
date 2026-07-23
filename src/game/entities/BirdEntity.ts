@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { disturbanceDelay, flightVector, isTargetableState } from '../../core/birds/bird-behavior';
+import { animationStartFrame, isLoopingBirdAnimation, shouldStartAnimation } from '../../core/birds/bird-animation';
 import { shouldFlipSprite, type FacingDirection } from '../../core/birds/bird-facing';
 import type { BirdPlan } from '../../core/birds/bird-plan';
 import { assertBirdPlacement, type SpriteContactType } from '../../core/birds/bird-placement';
@@ -33,6 +34,10 @@ export class BirdEntity extends Phaser.GameObjects.Sprite {
   private landingTarget?: BirdScenePlacement & { readonly worldX: number; readonly worldY: number };
   private environmentalOcclusion = 0;
   private environmentalDepth?: number;
+  private animationStartCount = 0;
+  private lastAnimationStartFrame = 0;
+  private lastAnimationKey?: string;
+  private readonly reducedMotion: boolean;
 
   constructor(scene: Phaser.Scene, plan: BirdPlan, definition: BirdSpriteDefinition, x: number, y: number, protectedBird: boolean, placement: BirdScenePlacement) {
     const variantIndex = Math.max(0, definition.biologicalVariants.findIndex((variant) => plan.biologicalVariant === variant));
@@ -44,6 +49,8 @@ export class BirdEntity extends Phaser.GameObjects.Sprite {
     this.protectedBird = protectedBird;
     this.placement = placement;
     this.resolvedBiologicalVariant = biologicalVariant;
+    this.reducedMotion = document.querySelector('#app')?.classList.contains('reduce-motion') === true
+      || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     this.state = plan.initialState;
     this.stateSince = scene.time.now;
     scene.add.existing(this);
@@ -139,6 +146,24 @@ export class BirdEntity extends Phaser.GameObjects.Sprite {
     return {
       x: this.x + (.5 - this.originX) * this.displayWidth,
       y: this.y + (.5 - this.originY) * this.displayHeight,
+    };
+  }
+
+  get animationTelemetry() {
+    const animation = this.definition.animations[this.state];
+    const key = this.lastAnimationKey;
+    return {
+      speciesId: this.plan.speciesId,
+      individualVisualSeed: this.plan.individualVisualSeed,
+      state: this.state,
+      animationKey: key ?? 'static',
+      frame: String(this.frame.name),
+      animationPhase: this.plan.animationPhase,
+      animationProgress: this.anims.currentAnim ? this.anims.getProgress() : 0,
+      animationRateMultiplier: this.anims.timeScale,
+      animationStartFrame: this.lastAnimationStartFrame,
+      animationStartCount: this.animationStartCount,
+      looping: animation ? isLoopingBirdAnimation(this.state, animation.repeat) : false,
     };
   }
 
@@ -276,12 +301,26 @@ export class BirdEntity extends Phaser.GameObjects.Sprite {
     const key = birdAnimationKey(this.definition, this.resolvedBiologicalVariant, this.plan.individualVisualVariant, state);
     const animation = this.definition.animations[state];
     if (this.scene.anims.exists(key)) {
-      this.play(key, true);
-      this.anims.timeScale = this.plan.animationRateMultiplier;
-      if (animation?.repeat === -1 && animation.frames.length > 1) {
-        const poseOffset = this.plan.posePreference === 'alternate' ? 1 / animation.frames.length : 0;
-        this.anims.setProgress((this.plan.animationPhase + poseOffset) % 1);
+      if (!shouldStartAnimation(this.lastAnimationKey, key)) return;
+      const looping = animation ? isLoopingBirdAnimation(state, animation.repeat) : false;
+      const startFrame = animationStartFrame(this.plan.animationPhase, animation?.frames.length ?? 1, looping);
+      this.lastAnimationKey = key;
+      if (this.reducedMotion && animation) {
+        this.anims.stop();
+        this.setFrame(frameFor(
+          this.definition,
+          this.resolvedBiologicalVariant,
+          this.plan.individualVisualVariant,
+          animation.frames[startFrame]!,
+        ));
+        this.anims.timeScale = 1;
+      } else {
+        this.play(key, true);
+        this.anims.timeScale = looping ? this.plan.animationRateMultiplier : 1;
+        if (looping && (animation?.frames.length ?? 0) > 1) this.anims.setProgress(this.plan.animationPhase);
       }
+      this.lastAnimationStartFrame = startFrame;
+      this.animationStartCount += 1;
     } else {
       const fallbackPose = this.plan.posePreference === 'alternate' && animation?.frames[1]
         ? animation.frames[1]

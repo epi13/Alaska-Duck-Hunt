@@ -72,6 +72,15 @@ const individualDefaults: IndividualDefaults = {
   localPathOffset: [3, 9],
 };
 
+const familyAnimationRate: Record<BirdFamily, readonly [number, number]> = {
+  dabbler: [0.92, 1.08],
+  diver: [0.94, 1.07],
+  seaDuck: [0.94, 1.06],
+  goose: [0.95, 1.05],
+  crane: [0.96, 1.04],
+  upland: [0.93, 1.07],
+};
+
 const familyDefaults: Record<BirdFamily, FamilyDefaults> = {
   dabbler: {
     surfaces: ['shallowWater', 'mudflat', 'shoreline', 'marshGrass'],
@@ -235,7 +244,16 @@ function profile(
   fieldNotes: BirdBehaviorProfile['fieldNotes'],
   overrides: Partial<FamilyDefaults & IndividualDefaults & Pick<BirdBehaviorProfile, 'revealDurationMs'>> = {},
 ): BirdBehaviorProfile {
-  return { speciesId, family, variants, ...familyDefaults[family], ...individualDefaults, ...overrides, fieldNotes };
+  return {
+    speciesId,
+    family,
+    variants,
+    ...familyDefaults[family],
+    ...individualDefaults,
+    animationRateMultiplier: familyAnimationRate[family],
+    ...overrides,
+    fieldNotes,
+  };
 }
 
 export const birdBehaviors: readonly BirdBehaviorProfile[] = [

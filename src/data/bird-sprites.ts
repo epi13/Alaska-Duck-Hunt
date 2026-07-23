@@ -47,15 +47,15 @@ const animations: BirdSpriteDefinition['animations'] = {
   concealed: anim(['concealed'], 2), resting: anim(['resting', 'foraging'], 2),
   foraging: anim(['foraging', 'resting'], 3), walking: anim(['walking', 'foraging'], 4),
   swimming: anim(['swimming', 'resting'], 3), diving: anim(['preDive', 'diving', 'surfacing'], 5),
-  perched: anim(['resting', 'alert'], 2), alert: anim(['alert', 'alert-call'], 4),
+  perched: anim(['resting', 'alert'], 2), alert: anim(['alert', 'alert-call'], 4, 0),
   revealing: anim(['revealing', 'standingBonus'], 3, 0), standingBonus: anim(['standingBonus', 'standing'], 2),
-  preTakeoff: anim(['preTakeoff', 'walking'], 6, 0), takeoff: anim(['takeoff', 'flying-up'], 8),
+  preTakeoff: anim(['preTakeoff', 'walking'], 6, 0), takeoff: anim(['takeoff', 'flying-up'], 8, 0),
   flying: anim(['flying-up', 'flying', 'flying-down', 'flying'], 9),
   distant: anim(['flying-up', 'flying', 'flying-down'], 7), banking: anim(['banking', 'flying'], 7),
   climbing: anim(['climbing', 'flying-up'], 8), descending: anim(['descending', 'glide', 'flying-down'], 7),
   landing: anim(['landing', 'resting'], 5, 0), settled: anim(['resting', 'foraging'], 2),
   returning: anim(['banking', 'flying', 'flying-down'], 7), hit: anim(['hit'], 1, 0),
-  falling: anim(['falling', 'hit'], 5),
+  falling: anim(['falling', 'hit'], 5, 0),
 };
 
 function stateVisuals(scale: number, crane = false): BirdSpriteDefinition['visuals'] {

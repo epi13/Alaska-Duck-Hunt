@@ -72,6 +72,8 @@ export interface BirdPlan {
   scaleMultiplier: number;
   animationPhase: number;
   animationRateMultiplier: number;
+  idleDelay?: number;
+  preferredIdleAnimation?: BirdState;
   posePreference: PosePreference;
   surface: BirdSurface;
   initialState: BirdState;
@@ -192,6 +194,8 @@ export function createFlockPlans(
       scaleMultiplier: stratifiedValue(() => visualRng.next(), profile.individualScale, index),
       animationPhase: (visualRng.next() + index * 0.381_966_011_25) % 1,
       animationRateMultiplier: stratifiedValue(() => visualRng.next(), profile.animationRateMultiplier, index),
+      idleDelay: Math.round(visualRng.next() * 180),
+      preferredIdleAnimation: preferredIdleAnimation(leader.initialState, index),
       posePreference: index % 2 === 0 ? 'primary' : 'alternate',
       speed: leader.speed + speedOffset,
       speedOffset,
@@ -205,6 +209,14 @@ export function createFlockPlans(
       formationOffsetY: baseOffsetY + formationJitter[1],
     };
   });
+}
+
+function preferredIdleAnimation(initialState: BirdState, index: number): BirdState | undefined {
+  if (['resting', 'foraging', 'walking'].includes(initialState)) {
+    return (['resting', 'foraging', 'walking'] as const)[index % 3];
+  }
+  if (['swimming', 'diving'].includes(initialState)) return index % 3 === 2 ? 'diving' : 'swimming';
+  return undefined;
 }
 
 function memberBiologicalVariant(
