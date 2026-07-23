@@ -16,6 +16,16 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: npm run check
       - run: npm run test:e2e
+      - name: Verify production Pages artifact
+        run: |
+          if grep -q '/src/main.ts' dist/index.html; then
+            echo 'dist/index.html still references the Vite source entrypoint'
+            exit 1
+          fi
+          grep -Eq 'src="\./assets/[^"]+\.js"' dist/index.html
+          test -f dist/assets/icon.svg
+      - uses: actions/configure-pages@v5
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
       - uses: actions/upload-pages-artifact@v3
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         with: { path: dist }

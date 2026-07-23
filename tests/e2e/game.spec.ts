@@ -866,7 +866,7 @@ test('original Alaskan Husky stays mapped, correctly faced, and readable across 
     await expect(surface).toHaveAttribute('data-dog-character', 'alaska-husky');
     await expect(surface).toHaveAttribute('data-dog-frame', /.+/);
     await expect.poll(async () => surface.getAttribute('data-dog-contact-error')).toBe('0.000');
-    await expect(surface).toHaveAttribute('data-dog-prop-relation', /behind|front|none/);
+    await expect(surface).toHaveAttribute('data-dog-prop-relation', /clear|behind|front/);
     await expect
       .poll(async () =>
         surface.evaluate((element) => {

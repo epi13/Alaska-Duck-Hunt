@@ -4,7 +4,12 @@ The production output is static and supports subpath hosting. Asset and service-
 
 ## GitHub Pages
 
-The Pages workflow installs with the lockfile, runs the full validation gate, builds with the repository base path, uploads the output artifact, and deploys only from the protected release branch. Pull requests run validation without deployment. No secrets beyond GitHub's generated Pages token are required.
+The repository Pages source must be set to **GitHub Actions**, not the legacy
+`main /` source. The Pages workflow installs with the lockfile, runs the full
+validation gate, verifies that `dist/index.html` references bundled assets
+rather than `/src/main.ts`, configures Pages, uploads `dist`, and deploys only
+from the protected release branch. Pull requests run validation without
+deployment. No secrets beyond GitHub's generated Pages token are required.
 
 ## Generic static hosting
 
@@ -15,4 +20,3 @@ Upload the complete build directory with `index.html`, manifest, icons, assets, 
 Use the development server for authoring and the production preview for build verification. LAN testing binds to an explicit local interface and should be treated as untrusted network exposure. PWA installation and Web Bluetooth generally require HTTPS; localhost is the standard development exception.
 
 Service-worker updates use a versioned cache and prompt the player before reload when a hunt is active. Offline verification starts once online to populate the cache, closes the server/network route, then reloads the installed scope and starts a hunt using cached assets.
-
