@@ -179,6 +179,76 @@ test('seeded crane visibly reveals before its bonus window and flight', async ({
   await expect.poll(async () => surface.getAttribute('data-bird-state-history'), { timeout: 10_000 }).toMatch(/crane:revealing.*crane:standingBonus.*crane:preTakeoff.*crane:takeoff.*crane:flying/);
 });
 
+test('seeded multi-bird flocks render distinct reproducible individuals', async ({ page }, testInfo) => {
+  test.skip(process.env.PLAYWRIGHT_PRODUCTION === '1', 'Deterministic flock overrides are development-only.');
+  test.setTimeout(120_000);
+  const scenarios = [
+    { name: 'snow-goose-morphs', location: 5, species: 'snow-goose', surface: 'shallowWater', state: 'resting' },
+    { name: 'mallard-pairing', location: 2, species: 'mallard', surface: 'shallowWater', state: 'swimming' },
+    { name: 'spruce-grouse', location: 4, species: 'grouse', surface: 'forestFloor', state: 'walking' },
+  ] as const;
+
+  let snowGooseReplay: string | undefined;
+  for (const scenario of scenarios) {
+    const query = new URLSearchParams({
+      seed: `individual-${scenario.name}`,
+      debugBirdSpecies: scenario.species,
+      debugBirdSurface: scenario.surface,
+      debugBirdState: scenario.state,
+      debugFlockSize: '6',
+    });
+    await page.goto(`/?${query}`);
+    await enterMenu(page);
+    await startHunt(page, scenario.location);
+    const surface = page.locator('#aim-layer');
+    await expect.poll(async () => {
+      const roster = await surface.getAttribute('data-bird-individual-plans');
+      return roster ? JSON.parse(roster).length : 0;
+    }).toBeGreaterThanOrEqual(4);
+    const serialized = await surface.getAttribute('data-bird-individual-plans');
+    expect(serialized).not.toBeNull();
+    const plans = (JSON.parse(serialized!) as Array<{
+      speciesId: string;
+      biologicalVariant: string;
+      individualVisualSeed: number;
+      individualVisualVariant: string;
+      scaleMultiplier: number;
+      animationPhase: number;
+      animationRateMultiplier: number;
+      posePreference: string;
+    }>).filter(({ speciesId }) => speciesId === scenario.species);
+    expect(plans.length).toBeGreaterThanOrEqual(4);
+    expect(new Set(plans.map(({ individualVisualSeed }) => individualVisualSeed)).size).toBe(plans.length);
+    expect(new Set(plans.slice(0, 4).map(({ scaleMultiplier }) => scaleMultiplier)).size).toBe(4);
+    expect(new Set(plans.slice(0, 4).map(({ animationPhase }) => animationPhase)).size).toBe(4);
+    expect(new Set(plans.map(({ animationRateMultiplier }) => animationRateMultiplier)).size).toBeGreaterThan(1);
+    expect(new Set(plans.map(({ posePreference }) => posePreference))).toEqual(new Set(['primary', 'alternate']));
+    expect(new Set(plans.map(({ individualVisualVariant }) => individualVisualVariant))).toEqual(new Set(['natural', 'alternate']));
+    if (scenario.species === 'snow-goose') {
+      expect(new Set(plans.map(({ biologicalVariant }) => biologicalVariant))).toEqual(new Set(['white', 'blue']));
+      snowGooseReplay = serialized!;
+    }
+    await page.screenshot({ path: testInfo.outputPath(`flock-${scenario.name}.png`) });
+  }
+
+  const replayQuery = new URLSearchParams({
+    seed: 'individual-snow-goose-morphs',
+    debugBirdSpecies: 'snow-goose',
+    debugBirdSurface: 'shallowWater',
+    debugBirdState: 'resting',
+    debugFlockSize: '6',
+  });
+  await page.goto(`/?${replayQuery}`);
+  await enterMenu(page);
+  await startHunt(page, 5);
+  const replaySurface = page.locator('#aim-layer');
+  await expect.poll(async () => {
+    const roster = await replaySurface.getAttribute('data-bird-individual-plans');
+    return roster ? JSON.parse(roster).length : 0;
+  }).toBeGreaterThanOrEqual(4);
+  await expect(replaySurface).toHaveAttribute('data-bird-individual-plans', snowGooseReplay!);
+});
+
 test('scene-map debug overlay and telemetry survive a mobile resize', async ({ page }, testInfo) => {
   await page.goto('/?seed=scene-map-qa&debugSceneMap=1');
   await enterMenu(page);
@@ -321,7 +391,7 @@ test('field guide, manifest, and responsive mobile layout', async ({ page }) => 
   expect(sheet.headers()['content-type']).toContain('image/png');
   const atlas = await page.request.get('/assets/birds/spectacled/atlas.json');
   expect(atlas.ok()).toBeTruthy();
-  expect(Object.keys((await atlas.json()).frames)).toHaveLength(32);
+  expect(Object.keys((await atlas.json()).frames)).toHaveLength(64);
   for (const asset of [
     '/assets/scenes/copper.png',
     '/assets/characters/alaska-husky/atlas.png',

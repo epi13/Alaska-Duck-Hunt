@@ -155,6 +155,9 @@ function startHunt() {
         aimLayer?.setAttribute('data-aim-x', x.toFixed(2));
         aimLayer?.setAttribute('data-aim-y', y.toFixed(2));
       });
+      scene.events.on('bird-individual-plans', (plans: object[]) => {
+        if (aimLayer) aimLayer.dataset.birdIndividualPlans = JSON.stringify(plans);
+      });
       scene.events.on(
         'bird-spawned',
         ({
@@ -169,6 +172,17 @@ function startHunt() {
           sceneDepth,
           worldX,
           worldY,
+          biologicalVariant,
+          individualVisualSeed,
+          individualVisualVariant,
+          scaleMultiplier,
+          animationPhase,
+          animationRateMultiplier,
+          posePreference,
+          speedOffset,
+          reactionOffsetMs,
+          formationOffsetX,
+          formationOffsetY,
         }: {
           speciesId: string;
           illustrated: boolean;
@@ -181,6 +195,17 @@ function startHunt() {
           sceneDepth: number;
           worldX: number;
           worldY: number;
+          biologicalVariant: string;
+          individualVisualSeed: number;
+          individualVisualVariant: string;
+          scaleMultiplier: number;
+          animationPhase: number;
+          animationRateMultiplier: number;
+          posePreference: string;
+          speedOffset: number;
+          reactionOffsetMs: number;
+          formationOffsetX: number;
+          formationOffsetY: number;
         }) => {
           aimLayer?.setAttribute('data-last-bird', speciesId);
           aimLayer?.setAttribute('data-bird-lane', lane);
@@ -196,6 +221,22 @@ function startHunt() {
             const count = Number(aimLayer.dataset.spriteBirds ?? 0) + 1;
             aimLayer.dataset.spriteBirds = String(count);
             aimLayer.dataset.lastIllustratedBird = speciesId;
+            const roster = JSON.parse(aimLayer.dataset.birdIndividualPlans ?? '[]') as object[];
+            roster.push({
+              speciesId,
+              biologicalVariant,
+              individualVisualSeed,
+              individualVisualVariant,
+              scaleMultiplier,
+              animationPhase,
+              animationRateMultiplier,
+              posePreference,
+              speedOffset,
+              reactionOffsetMs,
+              formationOffsetX,
+              formationOffsetY,
+            });
+            aimLayer.dataset.birdIndividualPlans = JSON.stringify(roster.slice(-24));
           }
         },
       );

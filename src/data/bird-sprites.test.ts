@@ -6,13 +6,14 @@ import { birdSprites, birdSpriteBySpecies, contactAnchorFor } from './bird-sprit
 import { species } from './content';
 
 describe('bird sprite atlas manifest', () => {
-  it('maps every species to a unique, named two-variant atlas without fallbacks', () => {
+  it('maps every species to a bounded biological and individual-treatment atlas without fallbacks', () => {
     expect(birdSprites).toHaveLength(16);
     expect(new Set(birdSprites.map((sprite) => sprite.speciesId)).size).toBe(16);
     expect(new Set(birdSprites.map((sprite) => sprite.textureKey)).size).toBe(16);
     expect(new Set(species.map((entry) => entry.id))).toEqual(new Set(birdSprites.map((sprite) => sprite.speciesId)));
     for (const sprite of birdSprites) {
-      expect(sprite.variants).toHaveLength(2);
+      expect(sprite.biologicalVariants).toHaveLength(2);
+      expect(sprite.individualVisualVariants).toEqual(['natural', 'alternate']);
       expect(sprite.imagePath).toBe(`assets/birds/${sprite.speciesId}/atlas.png`);
       expect(sprite.atlasPath).toBe(`assets/birds/${sprite.speciesId}/atlas.json`);
       expect(sprite.previewPath).toBe(`assets/birds/${sprite.speciesId}/preview.png`);

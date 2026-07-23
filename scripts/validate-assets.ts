@@ -47,27 +47,51 @@ for (const id of birdIds) {
   const signature = png.subarray(1, 4).toString('ascii');
   const { width, height } = pngSize(png);
   const expectedHeight = id === 'crane' ? 768 : 512;
-  if (signature !== 'PNG' || width !== expectedHeight * 2 || height !== expectedHeight) {
-    throw new Error(`${path} must be a ${expectedHeight * 2}x${expectedHeight} transparent PNG atlas.`);
+  if (signature !== 'PNG' || width !== expectedHeight * 4 || height !== expectedHeight) {
+    throw new Error(`${path} must be a ${expectedHeight * 4}x${expectedHeight} transparent PNG atlas.`);
   }
   if (!pngHasAlpha(png)) throw new Error(`${path} must preserve an alpha channel.`);
-  const atlas = JSON.parse(await readFile(`public/assets/birds/${id}/atlas.json`, 'utf8')) as { frames?: Record<string, { frame: { x: number; y: number; w: number; h: number } }>; meta?: { speciesId?: string; variants?: string[] } };
-  if (atlas.meta?.speciesId !== id || atlas.meta.variants?.length !== 2 || Object.keys(atlas.frames ?? {}).length !== 32) throw new Error(`${id} atlas metadata must contain two variants and 32 named frames.`);
+  const atlas = JSON.parse(await readFile(`public/assets/birds/${id}/atlas.json`, 'utf8')) as {
+    frames?: Record<string, { frame: { x: number; y: number; w: number; h: number } }>;
+    meta?: {
+      speciesId?: string;
+      biologicalVariants?: string[];
+      individualVisualVariants?: string[];
+      assetBudget?: {
+        biologicalVariants?: number;
+        individualTreatmentsPerVariant?: number;
+        framesPerTreatment?: number;
+        totalFrames?: number;
+      };
+    };
+  };
+  const definition = birdSprites.find((entry) => entry.speciesId === id)!;
+  const expectedFrameCount = definition.biologicalVariants.length * definition.individualVisualVariants.length * 16;
+  if (atlas.meta?.speciesId !== id
+    || JSON.stringify(atlas.meta.biologicalVariants) !== JSON.stringify(definition.biologicalVariants)
+    || JSON.stringify(atlas.meta.individualVisualVariants) !== JSON.stringify(definition.individualVisualVariants)
+    || atlas.meta.assetBudget?.biologicalVariants !== 2
+    || atlas.meta.assetBudget.individualTreatmentsPerVariant !== 2
+    || atlas.meta.assetBudget.framesPerTreatment !== 16
+    || atlas.meta.assetBudget.totalFrames !== expectedFrameCount
+    || Object.keys(atlas.frames ?? {}).length !== expectedFrameCount) {
+    throw new Error(`${id} atlas must stay within the two-biological-by-two-individual treatment budget (${expectedFrameCount} named frames).`);
+  }
   for (const [name, value] of Object.entries(atlas.frames ?? {})) {
     const frame = value.frame;
-    if (!/^[-a-z]+\/[-A-Za-z]+\/\d+$/.test(name) || frame.x < 0 || frame.y < 0 || frame.w <= 0 || frame.h <= 0 || frame.x + frame.w > width || frame.y + frame.h > height) throw new Error(`${id} has an invalid or out-of-bounds atlas frame: ${name}.`);
+    if (!/^[-a-z]+\/(?:natural|alternate)\/[-A-Za-z]+\/\d+$/.test(name) || frame.x < 0 || frame.y < 0 || frame.w <= 0 || frame.h <= 0 || frame.x + frame.w > width || frame.y + frame.h > height) throw new Error(`${id} has an invalid or out-of-bounds atlas frame: ${name}.`);
   }
   const requiredStates = id === 'crane'
     ? ['concealed', 'revealing', 'standingBonus', 'alert', 'preTakeoff', 'takeoff', 'flying', 'landing', 'hit', 'falling']
     : ['resting', 'alert', 'preTakeoff', 'takeoff', 'flying', 'landing', 'hit', 'falling'];
-  for (const state of requiredStates) {
-    if (!Object.keys(atlas.frames ?? {}).some((frame) => frame.includes(`/${state}/`))) throw new Error(`${id} is missing required ${state} frame.`);
+  for (const biologicalVariant of definition.biologicalVariants) for (const individualVisualVariant of definition.individualVisualVariants) for (const state of requiredStates) {
+    const name = `${biologicalVariant}/${individualVisualVariant}/${state}/0`;
+    if (!atlas.frames?.[name]) throw new Error(`${id} is missing required individual variant frame ${name}.`);
   }
   const preview = pngSize(await readFile(`public/assets/birds/${id}/preview.png`));
   const frameSize = expectedHeight / 4;
   if (preview.width !== frameSize * 4 || preview.height !== frameSize) throw new Error(`${id} preview strip is invalid.`);
 
-  const definition = birdSprites.find((entry) => entry.speciesId === id)!;
   if (definition.imagePath !== `assets/birds/${id}/atlas.png` || definition.atlasPath !== `assets/birds/${id}/atlas.json`) throw new Error(`${id} runtime paths do not match the production atlas.`);
   for (const [state, visual] of Object.entries(definition.visuals)) if (!visual || visual.hitbox[0] <= 0 || visual.hitbox[1] <= 0 || visual.occlusion < 0 || visual.occlusion > 1) throw new Error(`${id}/${state} has invalid state-specific visual metadata.`);
 

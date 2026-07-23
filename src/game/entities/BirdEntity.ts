@@ -26,7 +26,7 @@ export class BirdEntity extends Phaser.GameObjects.Sprite {
   stateSince: number;
   flightSince = 0;
   private pendingDisturbance?: number;
-  private resolvedVariant: string;
+  private resolvedBiologicalVariant: string;
   private hasReturned = false;
   private readonly returnPlan: BirdPlan;
   private placement: BirdScenePlacement;
@@ -35,15 +35,15 @@ export class BirdEntity extends Phaser.GameObjects.Sprite {
   private environmentalDepth?: number;
 
   constructor(scene: Phaser.Scene, plan: BirdPlan, definition: BirdSpriteDefinition, x: number, y: number, protectedBird: boolean, placement: BirdScenePlacement) {
-    const variantIndex = Math.max(0, definition.variants.findIndex((variant) => plan.variant === variant));
-    const variant = definition.variants[variantIndex] ?? definition.variants[0];
-    super(scene, x, y, definition.textureKey, frameFor(definition, variant, poseForState(plan.initialState)));
+    const variantIndex = Math.max(0, definition.biologicalVariants.findIndex((variant) => plan.biologicalVariant === variant));
+    const biologicalVariant = definition.biologicalVariants[variantIndex] ?? definition.biologicalVariants[0];
+    super(scene, x, y, definition.textureKey, frameFor(definition, biologicalVariant, plan.individualVisualVariant, poseForState(plan.initialState)));
     this.plan = plan;
     this.returnPlan = { ...plan, flightProfile: 'circlingReturn', direction: plan.direction === 1 ? -1 : 1 };
     this.definition = definition;
     this.protectedBird = protectedBird;
     this.placement = placement;
-    this.resolvedVariant = variant;
+    this.resolvedBiologicalVariant = biologicalVariant;
     this.state = plan.initialState;
     this.stateSince = scene.time.now;
     scene.add.existing(this);
@@ -221,7 +221,7 @@ export class BirdEntity extends Phaser.GameObjects.Sprite {
       if (this.y > height + 90) this.advance('fall-complete');
     } else if (['walking', 'foraging', 'swimming'].includes(this.state)) {
       this.x += this.plan.idleDirection * 7 * dt;
-      this.y += Math.sin(nowMs / 520 + this.plan.phase) * 0.08;
+      this.y += Math.sin(nowMs / 520 + this.plan.movementPhase) * 0.08;
     }
 
     const outsideFlightBounds = this.x < -180 || this.x > width + 180 || this.y < -180;
@@ -256,7 +256,7 @@ export class BirdEntity extends Phaser.GameObjects.Sprite {
           return [contact.x, contact.y] as const;
         })()
       : visual.origin;
-    this.setScale(visual.scale * (anchored ? this.placement.scale : 1))
+    this.setScale(visual.scale * this.plan.scaleMultiplier * (anchored ? this.placement.scale : 1))
       .setOrigin(...origin)
       .setDepth(anchored ? (this.environmentalDepth ?? this.placement.displayDepth) : visual.depth)
       .setSize(...visual.hitbox);
@@ -273,9 +273,21 @@ export class BirdEntity extends Phaser.GameObjects.Sprite {
   }
 
   private playState(state: BirdState) {
-    const key = birdAnimationKey(this.definition, this.resolvedVariant, state);
-    if (this.scene.anims.exists(key)) this.play(key, true);
-    else this.setFrame(frameFor(this.definition, this.resolvedVariant, poseForState(state)));
+    const key = birdAnimationKey(this.definition, this.resolvedBiologicalVariant, this.plan.individualVisualVariant, state);
+    const animation = this.definition.animations[state];
+    if (this.scene.anims.exists(key)) {
+      this.play(key, true);
+      this.anims.timeScale = this.plan.animationRateMultiplier;
+      if (animation?.repeat === -1 && animation.frames.length > 1) {
+        const poseOffset = this.plan.posePreference === 'alternate' ? 1 / animation.frames.length : 0;
+        this.anims.setProgress((this.plan.animationPhase + poseOffset) % 1);
+      }
+    } else {
+      const fallbackPose = this.plan.posePreference === 'alternate' && animation?.frames[1]
+        ? animation.frames[1]
+        : poseForState(state);
+      this.setFrame(frameFor(this.definition, this.resolvedBiologicalVariant, this.plan.individualVisualVariant, fallbackPose));
+    }
   }
 }
 

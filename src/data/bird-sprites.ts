@@ -3,6 +3,7 @@ import type { BirdFamily } from './bird-behaviors';
 import type { AuthoredFacing } from '../core/birds/bird-facing';
 import type { SpriteContactType } from '../core/birds/bird-placement';
 import type { NormalizedPoint } from '../core/scenes/scene-map';
+import type { IndividualVisualVariant } from '../core/birds/bird-plan';
 
 export interface BirdAnimationDefinition {
   frames: readonly string[];
@@ -27,7 +28,8 @@ export interface BirdSpriteDefinition {
   previewPath: string;
   family: BirdFamily;
   authoredFacing: AuthoredFacing;
-  variants: readonly [string, string];
+  biologicalVariants: readonly [string, string];
+  individualVisualVariants: readonly [IndividualVisualVariant, IndividualVisualVariant];
   frameSize: number;
   animations: Readonly<Partial<Record<BirdState, BirdAnimationDefinition>>>;
   visuals: Readonly<Partial<Record<BirdState, BirdStateVisual>>>;
@@ -91,13 +93,13 @@ const rows = [
   ['wigeon', 'dabbler', ['drake', 'hen'], 0.7, 'left'], ['teal', 'dabbler', ['drake', 'hen'], 0.58, 'left'],
   ['scaup', 'diver', ['drake', 'hen'], 0.7, 'right'], ['eider', 'seaDuck', ['drake', 'hen'], 0.8, 'right'],
   ['harlequin', 'seaDuck', ['drake', 'hen'], 0.62, 'left'], ['goldeneye', 'diver', ['drake', 'hen'], 0.66, 'right'],
-  ['goose', 'goose', ['adult', 'juvenile'], 0.86, 'right'], ['canada-goose', 'goose', ['adult', 'small-adult'], 0.9, 'left'],
-  ['snow-goose', 'goose', ['white', 'blue'], 0.88, 'left'], ['brant', 'goose', ['adult', 'small-adult'], 0.78, 'left'],
+  ['goose', 'goose', ['adult', 'juvenile'], 0.86, 'right'], ['canada-goose', 'goose', ['adult', 'juvenile'], 0.9, 'left'],
+  ['snow-goose', 'goose', ['white', 'blue'], 0.88, 'left'], ['brant', 'goose', ['adult', 'juvenile'], 0.78, 'left'],
   ['crane', 'crane', ['gray-adult', 'rust-stained'], 0.72, 'right'], ['grouse', 'upland', ['male', 'female'], 0.66, 'right'],
   ['ptarmigan', 'upland', ['summer', 'winter'], 0.66, 'right'], ['spectacled', 'seaDuck', ['drake', 'hen'], 0.74, 'right'],
 ] as const satisfies readonly (readonly [string, BirdFamily, readonly [string, string], number, AuthoredFacing])[];
 
-export const birdSprites: readonly BirdSpriteDefinition[] = rows.map(([speciesId, family, variants, scale, authoredFacing]) => ({
+export const birdSprites: readonly BirdSpriteDefinition[] = rows.map(([speciesId, family, biologicalVariants, scale, authoredFacing]) => ({
   speciesId,
   textureKey: `bird-${speciesId}-atlas`,
   imagePath: `assets/birds/${speciesId}/atlas.png`,
@@ -105,7 +107,8 @@ export const birdSprites: readonly BirdSpriteDefinition[] = rows.map(([speciesId
   previewPath: `assets/birds/${speciesId}/preview.png`,
   family,
   authoredFacing,
-  variants,
+  biologicalVariants,
+  individualVisualVariants: ['natural', 'alternate'],
   frameSize: speciesId === 'crane' ? 192 : 128,
   animations,
   visuals: stateVisuals(scale, speciesId === 'crane'),
@@ -114,9 +117,19 @@ export const birdSprites: readonly BirdSpriteDefinition[] = rows.map(([speciesId
 
 export const birdSpriteBySpecies = new Map(birdSprites.map((definition) => [definition.speciesId, definition] as const));
 
-export function frameFor(definition: BirdSpriteDefinition, variant: string, pose: string): string {
-  const atlasVariant = definition.variants.includes(variant as never) ? variant : definition.variants[0];
-  return `${atlasVariant}/${pose}/0`;
+export function frameFor(
+  definition: BirdSpriteDefinition,
+  biologicalVariant: string,
+  individualVisualVariant: IndividualVisualVariant,
+  pose: string,
+): string {
+  const atlasBiologicalVariant = definition.biologicalVariants.includes(biologicalVariant as never)
+    ? biologicalVariant
+    : definition.biologicalVariants[0];
+  const atlasVisualVariant = definition.individualVisualVariants.includes(individualVisualVariant)
+    ? individualVisualVariant
+    : definition.individualVisualVariants[0];
+  return `${atlasBiologicalVariant}/${atlasVisualVariant}/${pose}/0`;
 }
 
 export function contactAnchorFor(definition: BirdSpriteDefinition, state: BirdState, type: SpriteContactType): NormalizedPoint {
